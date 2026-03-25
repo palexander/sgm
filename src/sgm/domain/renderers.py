@@ -4,11 +4,14 @@ from sgm.domain.models import (
     ApprovalResult,
     ContextResponse,
     GoverningSpec,
+    PersistResult,
     Proposal,
     ProposalListResult,
     ProposeResult,
     RejectResult,
+    RelatedDecision,
     SpecDelta,
+    SyncDecisionResult,
     SyncFilesResult,
     SyncSpecResult,
     ValidationReport,
@@ -20,25 +23,35 @@ from sgm.domain.models import (
 def render_context(response: ContextResponse) -> str:
     if not response.indexed:
         return "[SKIP] not indexed"
-    if not response.specs:
+    if not response.specs and not response.decisions:
         return "[SKIP] no governing specs"
 
-    lines: list[str] = [f"[SPECS] {len(response.specs)} governing"]
+    lines: list[str] = []
     spec_ids: list[str] = []
-    for spec in response.specs:
-        spec_ids.append(spec.id)
-        lines.extend(_render_governing_spec(spec=spec))
-        lines.append("")
+    if response.specs:
+        lines.append(f"[SPECS] {len(response.specs)} governing")
+        for spec in response.specs:
+            spec_ids.append(spec.id)
+            lines.extend(_render_governing_spec(spec=spec))
+            lines.append("")
+
+    if response.decisions:
+        if lines and lines[-1] == "":
+            while lines and lines[-1] == "":
+                lines.pop()
+            lines.append("")
+        lines.append(f"[DECISIONS] {len(response.decisions)} informing")
+        for decision in response.decisions:
+            lines.extend(_render_related_decision(decision=decision))
+            lines.append("")
 
     while lines and lines[-1] == "":
         lines.pop()
 
-    if response.siblings:
+    if response.siblings and spec_ids:
         joined_spec_ids: str = ", ".join(spec_ids)
         lines.append("")
-        lines.append(
-            f"[SIBLINGS] {len(response.siblings)} other files under {joined_spec_ids}"
-        )
+        lines.append(f"[SIBLINGS] {len(response.siblings)} other files under {joined_spec_ids}")
         lines.extend(response.siblings)
     return "\n".join(lines)
 
@@ -63,6 +76,17 @@ def _render_governing_spec(spec: GoverningSpec) -> list[str]:
         lines.append(compliance_line)
     if spec.spec_delta is not None:
         lines.extend(_render_spec_delta(spec.spec_delta))
+    return lines
+
+
+def _render_related_decision(decision: RelatedDecision) -> list[str]:
+    lines: list[str] = [f"{decision.id} {decision.title} [{decision.status}]"]
+    for text_line in decision.context.strip().splitlines():
+        lines.append(f"  context: {text_line}")
+    for text_line in decision.decision.strip().splitlines():
+        lines.append(f"  decision: {text_line}")
+    for text_line in decision.consequences.strip().splitlines():
+        lines.append(f"  consequences: {text_line}")
     return lines
 
 
@@ -155,6 +179,20 @@ def render_sync_spec(result: SyncSpecResult) -> str:
     return (
         f"ingested {result.spec_id}, {result.assertion_count} assertions, "
         f"governs {result.governed_count} files matching {list(result.selectors)}"
+    )
+
+
+def render_sync_decision(result: SyncDecisionResult) -> str:
+    return (
+        f"ingested {result.decision_id}, "
+        f"informs {result.informed_count} files matching {list(result.selectors)}"
+    )
+
+
+def render_persist(result: PersistResult) -> str:
+    return (
+        f"persisted {result.persisted_validations} validation records and "
+        f"{result.persisted_proposals} proposals"
     )
 
 

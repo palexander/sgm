@@ -8,16 +8,12 @@ from tests.integration.helpers import bump_spec_version, create_sample_repo, run
 def test_cli_smoke_flow(
     tmp_path: Path,
     sgm_executable: Path,
-    memgraph_container: tuple[str, int],
 ) -> None:
-    host, port = memgraph_container
     sample_repo = create_sample_repo(tmp_path)
 
     context_result = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "context",
         "src/services/discharge.ts",
     )
@@ -28,8 +24,6 @@ def test_cli_smoke_flow(
     validate_pass = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "validate",
         "src/services/discharge.ts",
         "--no-record",
@@ -40,8 +34,6 @@ def test_cli_smoke_flow(
     validate_fail = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "validate",
         "src/services/bad-handler.ts",
     )
@@ -49,12 +41,11 @@ def test_cli_smoke_flow(
     assert "[FAIL] 2/2" in validate_fail.stdout
     assert "(recorded)" in validate_fail.stdout
     assert "spec-001 compliance:" in validate_fail.stdout
+    assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
 
     context_after_record = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "context",
         "src/services/bad-handler.ts",
     )
@@ -64,8 +55,6 @@ def test_cli_smoke_flow(
     context_with_delta = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "context",
         "src/services/bad-handler.ts",
     )
@@ -81,8 +70,6 @@ def test_cli_smoke_flow(
     validate_with_delta = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "validate",
         "src/services/bad-handler.ts",
         "--no-record",
@@ -96,19 +83,16 @@ def test_cli_smoke_flow(
     ungoverned_context = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "context",
         "src/middleware/auth.ts",
     )
     assert ungoverned_context.returncode == 0
-    assert ungoverned_context.stdout == "[SKIP] no governing specs"
+    assert "[DECISIONS] 1 informing" in ungoverned_context.stdout
+    assert "dec-001 Move validation to middleware boundary [active]" in ungoverned_context.stdout
 
     propose_result = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "propose",
         "spec-001",
         "src/middleware/auth.ts",
@@ -117,12 +101,13 @@ def test_cli_smoke_flow(
     assert propose_result.returncode == 0
     assert "[PROPOSED] prop-" in propose_result.stdout
     proposal_id = propose_result.stdout.splitlines()[0].split()[1]
+    assert (
+        sample_repo.root / ".sgm" / "work" / "proposals" / f"{proposal_id}.json"
+    ).is_file()
 
     list_result = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "proposals",
         "list",
         "--status",
@@ -134,8 +119,6 @@ def test_cli_smoke_flow(
     approve_result = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "proposals",
         "approve",
         proposal_id,
@@ -146,19 +129,46 @@ def test_cli_smoke_flow(
     governed_context = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "context",
         "src/middleware/auth.ts",
     )
     assert governed_context.returncode == 0
     assert "[SPECS] 1 governing" in governed_context.stdout
 
+    persist_proposal_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "persist",
+    )
+    assert persist_proposal_result.returncode == 0
+    assert (
+        sample_repo.root / ".sgm" / "persisted" / "proposals" / f"{proposal_id}.json"
+    ).is_file()
+    assert not (
+        sample_repo.root / ".sgm" / "work" / "proposals" / f"{proposal_id}.json"
+    ).exists()
+    governed_context_after_persist = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "context",
+        "src/middleware/auth.ts",
+    )
+    assert governed_context_after_persist.returncode == 0
+    assert "[SPECS] 1 governing" in governed_context_after_persist.stdout
+
     sync_files = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
+        "sync",
+        "decision",
+        "decisions/move-validation-boundary.yaml",
+    )
+    assert sync_files.returncode == 0
+    assert "ingested dec-001" in sync_files.stdout
+
+    sync_files = run_cli(
+        sgm_executable,
+        sample_repo.root,
         "sync",
         "files",
         "--path",
@@ -170,8 +180,6 @@ def test_cli_smoke_flow(
     sync_spec_v2 = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "sync",
         "spec",
         "specs/rpc-service-pattern.yaml",
@@ -181,8 +189,6 @@ def test_cli_smoke_flow(
     context_after_bump = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "context",
         "src/services/bad-handler.ts",
     )
@@ -195,20 +201,26 @@ def test_cli_smoke_flow(
     )
     assert before_line == after_line
 
+    persist_validation_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "persist",
+    )
+    assert persist_validation_result.returncode == 0
+    assert "persisted" in persist_validation_result.stdout
+    assert tuple((sample_repo.root / ".sgm" / "persisted" / "validations").rglob("*.json"))
+    assert not tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
+
 
 def test_validate_no_record_leaves_compliance_unchanged(
     tmp_path: Path,
     sgm_executable: Path,
-    memgraph_container: tuple[str, int],
 ) -> None:
-    host, port = memgraph_container
     sample_repo = create_sample_repo(tmp_path)
 
     dry_run = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "validate",
         "src/services/bad-handler.ts",
         "--no-record",
@@ -220,8 +232,6 @@ def test_validate_no_record_leaves_compliance_unchanged(
     context_result = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "context",
         "src/services/bad-handler.ts",
     )

@@ -9,19 +9,10 @@ ExitCode = Literal[0, 1, 2, 3]
 AssertionKind = Literal["structural"]
 AssertionSeverity = Literal["error", "warning"]
 SpecStatus = Literal["draft", "active", "deprecated"]
+DecisionStatus = Literal["draft", "active", "superseded"]
 CodeNodeKind = Literal["file", "directory"]
 ProposalStatus = Literal["pending", "approved", "rejected"]
 ValidationOutcome = Literal["pass", "fail", "inconclusive"]
-
-
-@dataclass(frozen=True, slots=True)
-class GraphConnectionConfig:
-    host: str
-    port: int
-    username: str
-    password: str
-    encrypted: bool
-    lazy: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +59,11 @@ class GovernanceSelector:
 
 
 @dataclass(frozen=True, slots=True)
+class DecisionSelector:
+    selector: str
+
+
+@dataclass(frozen=True, slots=True)
 class CodeNode:
     id: str
     path: str
@@ -91,6 +87,29 @@ class GoverningSpec:
     passed_checks: int | None
     total_checks: int | None
     spec_delta: SpecDelta | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionDocument:
+    id: str
+    source_path: str
+    source_text: str
+    title: str
+    status: DecisionStatus
+    context: str
+    decision: str
+    consequences: str
+    touches: tuple[DecisionSelector, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RelatedDecision:
+    id: str
+    title: str
+    status: DecisionStatus
+    context: str
+    decision: str
+    consequences: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,8 +169,16 @@ class ValidationReport:
 class ContextResponse:
     target_path: str
     specs: tuple[GoverningSpec, ...]
+    decisions: tuple[RelatedDecision, ...]
     siblings: tuple[str, ...]
     indexed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class SyncDecisionResult:
+    decision_id: str
+    informed_count: int
+    selectors: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +193,12 @@ class SyncSpecResult:
     assertion_count: int
     governed_count: int
     selectors: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PersistResult:
+    persisted_validations: int
+    persisted_proposals: int
 
 
 @dataclass(frozen=True, slots=True)

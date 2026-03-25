@@ -28,7 +28,12 @@ class FileSystemAdapter:
         paths.extend(sorted(path for path in root_path.rglob("*")))
         nodes: list[CodeNode] = []
         for path in paths:
-            if path.name == ".git":
+            relative_parts: tuple[str, ...] = path.relative_to(root_path).parts
+            if path != root_path and any(part.startswith(".") for part in relative_parts):
+                continue
+            if "__pycache__" in relative_parts or path.suffix == ".pyc":
+                continue
+            if path.is_symlink():
                 continue
             kind: CodeNodeKind
             if path.is_dir():
@@ -68,3 +73,17 @@ class FileSystemAdapter:
                 continue
             spec_paths.append(to_repo_relative_posix(self.repo_root, str(path)))
         return tuple(spec_paths)
+
+    def list_decision_files(self) -> tuple[str, ...]:
+        decisions_root: Path = self.repo_root / "decisions"
+        if not decisions_root.is_dir():
+            return ()
+
+        decision_paths: list[str] = []
+        for path in sorted(decisions_root.rglob("*")):
+            if not path.is_file():
+                continue
+            if path.suffix not in {".yaml", ".yml"}:
+                continue
+            decision_paths.append(to_repo_relative_posix(self.repo_root, str(path)))
+        return tuple(decision_paths)

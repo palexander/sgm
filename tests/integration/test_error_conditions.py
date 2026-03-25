@@ -8,16 +8,12 @@ from tests.integration.helpers import create_sample_repo, run_cli
 def test_validate_returns_infra_error_for_missing_disk_file(
     tmp_path: Path,
     sgm_executable: Path,
-    memgraph_container: tuple[str, int],
 ) -> None:
-    host, port = memgraph_container
     sample_repo = create_sample_repo(tmp_path)
 
     result = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "validate",
         "src/services/missing.ts",
     )
@@ -29,16 +25,12 @@ def test_validate_returns_infra_error_for_missing_disk_file(
 def test_context_returns_not_indexed_for_missing_path(
     tmp_path: Path,
     sgm_executable: Path,
-    memgraph_container: tuple[str, int],
 ) -> None:
-    host, port = memgraph_container
     sample_repo = create_sample_repo(tmp_path)
 
     result = run_cli(
         sgm_executable,
         sample_repo.root,
-        host,
-        port,
         "context",
         "src/services/missing.ts",
     )
@@ -47,17 +39,18 @@ def test_context_returns_not_indexed_for_missing_path(
     assert result.stdout == "[SKIP] not indexed"
 
 
-def test_graph_unreachable_returns_exit_3(
+def test_invalid_state_returns_exit_3(
     tmp_path: Path,
     sgm_executable: Path,
 ) -> None:
     sample_repo = create_sample_repo(tmp_path)
+    state_dir = sample_repo.root / ".sgm" / "work"
+    state_dir.mkdir(parents=True)
+    (state_dir / "state.json").write_text("not-json", encoding="utf-8")
 
     result = run_cli(
         sgm_executable,
         sample_repo.root,
-        "127.0.0.1",
-        65530,
         "context",
         "src/services/discharge.ts",
     )

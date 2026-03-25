@@ -6,9 +6,8 @@ from typing import Annotated
 
 import typer
 
-from sgm.adapters.config import load_graph_connection_config
 from sgm.adapters.filesystem import FileSystemAdapter
-from sgm.adapters.memgraph import MemgraphRepository
+from sgm.adapters.repository import FileRepository
 from sgm.adapters.system import SystemAdapter
 from sgm.application.services import SgmService
 from sgm.domain.errors import (
@@ -25,9 +24,11 @@ from sgm.domain.paths import ensure_repo_root
 from sgm.domain.renderers import (
     render_approval,
     render_context,
+    render_persist,
     render_proposals,
     render_propose,
     render_rejection,
+    render_sync_decision,
     render_sync_files,
     render_sync_spec,
     render_validation,
@@ -42,7 +43,7 @@ app.add_typer(sync_app, name="sync")
 
 def _service() -> SgmService:
     repo_context = ensure_repo_root(Path.cwd())
-    repository = MemgraphRepository(config=load_graph_connection_config())
+    repository = FileRepository(repo_root=repo_context.root)
     filesystem = FileSystemAdapter(repo_root=repo_context.root)
     system = SystemAdapter()
     return SgmService(
@@ -115,6 +116,16 @@ def _propose(service: SgmService, spec_id: str, path: str, reason: str) -> ExitC
     return 0
 
 
+@app.command()
+def persist() -> None:
+    _run_command(_persist, auto_refresh=False)
+
+
+def _persist(service: SgmService) -> ExitCode:
+    typer.echo(render_persist(service.persist()))
+    return 0
+
+
 @proposals_app.command("list")
 def proposals_list(
     status: Annotated[
@@ -179,6 +190,18 @@ def sync_spec(
 
 def _sync_spec(service: SgmService, yaml_file: str) -> ExitCode:
     typer.echo(render_sync_spec(service.sync_spec(yaml_file)))
+    return 0
+
+
+@sync_app.command("decision")
+def sync_decision(
+    yaml_file: Annotated[str, typer.Argument(help="Decision YAML file to ingest.")],
+) -> None:
+    _run_command(lambda service: _sync_decision(service, yaml_file), auto_refresh=False)
+
+
+def _sync_decision(service: SgmService, yaml_file: str) -> ExitCode:
+    typer.echo(render_sync_decision(service.sync_decision(yaml_file)))
     return 0
 
 

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from sgm.adapters.decision_loader import load_decision_document
 from sgm.adapters.filesystem import FileSystemAdapter
-from sgm.adapters.memgraph import GraphRepository
+from sgm.adapters.repository import GraphRepository
 from sgm.adapters.spec_loader import load_spec_document
 from sgm.adapters.system import SystemAdapter
 from sgm.domain.errors import EntityNotFoundError, FileNotFoundOnDiskError, NotIndexedError
@@ -12,19 +13,21 @@ from sgm.domain.models import (
     ComplianceSnapshot,
     ContextResponse,
     GoverningSpec,
+    PersistResult,
     ProposalListResult,
     ProposalStatus,
     ProposeResult,
     RejectResult,
+    RelatedDecision,
     RepoContext,
     SpecDelta,
+    SyncDecisionResult,
     SyncFilesResult,
     SyncSpecResult,
     ValidationReport,
     ValidationSummary,
 )
 from sgm.domain.paths import normalize_scan_root, to_repo_relative_posix
-from sgm.domain.scoring import merge_compliance
 from sgm.domain.spec_deltas import build_spec_delta
 from sgm.domain.validation import validate_assertions
 
@@ -46,6 +49,14 @@ class SgmService:
             )
             self.graph_repository.sync_spec(spec)
         self.graph_repository.prune_specs(spec_paths)
+        decision_paths: tuple[str, ...] = self.filesystem.list_decision_files()
+        for decision_path in decision_paths:
+            decision = load_decision_document(
+                self.repo_context.root / decision_path,
+                self.repo_context.root,
+            )
+            self.graph_repository.sync_decision(decision)
+        self.graph_repository.prune_decisions(decision_paths)
 
     def sync_files(self, scan_root: str | None) -> SyncFilesResult:
         normalized_root: str = normalize_scan_root(self.repo_context.root, scan_root)
@@ -60,12 +71,21 @@ class SgmService:
         )
         return self.graph_repository.sync_spec(spec)
 
+    def sync_decision(self, yaml_path: str) -> SyncDecisionResult:
+        normalized_path: str = to_repo_relative_posix(self.repo_context.root, yaml_path)
+        decision = load_decision_document(
+            self.repo_context.root / normalized_path,
+            self.repo_context.root,
+        )
+        return self.graph_repository.sync_decision(decision)
+
     def context(self, raw_target_path: str) -> ContextResponse:
         target_path: str = to_repo_relative_posix(self.repo_context.root, raw_target_path)
         response: ContextResponse = self.graph_repository.get_context(target_path)
         return ContextResponse(
             target_path=response.target_path,
             specs=self._with_spec_deltas(response.specs),
+            decisions=self._active_decisions(response.decisions),
             siblings=response.siblings,
             indexed=response.indexed,
         )
@@ -117,29 +137,13 @@ class SgmService:
             )
             summaries.append(summary)
             if record:
-                existing_snapshot: ComplianceSnapshot = previous.get(
-                    spec_id,
-                    ComplianceSnapshot(
-                        total_checks=0,
-                        passed_checks=0,
-                        failed_errors=0,
-                        failed_warnings=0,
-                        score=1.0,
-                    ),
-                )
-                merged_snapshot: ComplianceSnapshot = merge_compliance(
-                    previous=existing_snapshot,
+                persisted_snapshot: ComplianceSnapshot = self.graph_repository.record_validation(
+                    spec_id=spec_id,
+                    target_path=target_path,
                     total_checks=summary.total_checks,
                     passed_checks=summary.passed_checks,
                     failed_errors=summary.failed_errors,
                     failed_warnings=summary.failed_warnings,
-                )
-                persisted_snapshot: ComplianceSnapshot = (
-                    self.graph_repository.apply_compliance_update(
-                        spec_id=spec_id,
-                        target_path=target_path,
-                        snapshot=merged_snapshot,
-                    )
                 )
                 updated[spec_id] = (
                     persisted_snapshot.score,
@@ -176,6 +180,9 @@ class SgmService:
     def proposals_reject(self, proposal_id: str, review_reason: str | None) -> RejectResult:
         return self.graph_repository.reject_proposal(proposal_id, review_reason)
 
+    def persist(self) -> PersistResult:
+        return self.graph_repository.persist()
+
     def _with_spec_deltas(
         self,
         specs: tuple[GoverningSpec, ...],
@@ -190,3 +197,9 @@ class SgmService:
             )
             enriched_specs.append(replace(spec, spec_delta=spec_delta))
         return tuple(enriched_specs)
+
+    def _active_decisions(
+        self,
+        decisions: tuple[RelatedDecision, ...],
+    ) -> tuple[RelatedDecision, ...]:
+        return decisions
