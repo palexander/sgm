@@ -1,0 +1,11 @@
+{
+  "failed_errors": 0,
+  "failed_warnings": 0,
+  "passed_checks": 0,
+  "path": "README.md",
+  "recorded_at": "2026-03-25T05:19:53+00:00",
+  "source_path": "specs/sgm-persistence-artifacts.yaml",
+  "spec_id": "spec-sgm-persistence-001",
+  "total_checks": 0,
+  "version": 1
+}

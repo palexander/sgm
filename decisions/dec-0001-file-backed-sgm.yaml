@@ -1,0 +1,18 @@
+id: dec-0001
+title: "Replace Memgraph with file-backed derived state"
+status: active
+context: |
+  SGM's current prototype relies on Memgraph for its derived index and mutable summaries.
+  That makes normal local workflows depend on a graph database even though the repo files are the source of truth.
+decision: |
+  Move SGM toward file-backed derived state for normal workflows and remove Memgraph from the core path.
+  Preserve the current agent loop and CLI contract while migrating the storage implementation.
+consequences: |
+  Changes to adapters, application refresh logic, integration tests, and docs should prefer the file-backed direction.
+  Existing Memgraph code may remain temporarily, but new work should help shrink that dependency rather than deepen it.
+touches:
+  - selector: "src/sgm/adapters/**"
+  - selector: "src/sgm/application/**"
+  - selector: "src/sgm/cli.py"
+  - selector: "tests/integration/**"
+  - selector: "README.md"
