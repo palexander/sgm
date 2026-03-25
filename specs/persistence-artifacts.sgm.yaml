@@ -3,7 +3,6 @@ title: "SGM Persistence Artifacts"
 version: 1
 status: active
 author: paul
-warn_below: 0.8
 
 text: |
   SGM should persist collaboration state in a Git-friendly way:
@@ -13,15 +12,24 @@ text: |
   4. Shared history should prefer append-only or file-per-item artifacts over a single mutable state file.
   5. Derived summaries may be cached locally, but they must remain reconstructible from checked-in artifacts plus persisted records.
   6. Multi-user use should avoid commit collisions by separating declarative repo state from operational runtime state.
-
-assertions: []
+  7. This spec naturally splashes into the persist command, the repository and filesystem storage code, and the smoke/error tests that exercise the state lifecycle.
 
 governs:
-  - selector: "README.md"
+  - selector: "specs/persistence-artifacts.sgm.yaml"
     priority: 1
-  - selector: "src/sgm/adapters/**"
+  - selector: "src/sgm/cli.py"
+    priority: 1
+  - selector: "src/sgm/application/services.py"
+    priority: 1
+  - selector: "src/sgm/adapters/repository.py"
+    priority: 1
+  - selector: "src/sgm/adapters/filesystem.py"
+    priority: 1
+  - selector: "tests/integration/test_cli_smoke.py"
+    priority: 1
+  - selector: "tests/integration/test_error_conditions.py"
+    priority: 1
+  - selector: "README.md"
     priority: 2
-  - selector: "src/sgm/application/**"
-    priority: 2
-  - selector: "tests/integration/**"
+  - selector: "AGENTS.md"
     priority: 2

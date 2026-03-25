@@ -1,0 +1,29 @@
+id: spec-sgm-spec-document-format-001
+title: "SGM Spec Document Format"
+version: 1
+status: active
+author: paul
+
+text: |
+  SGM spec documents should match the current YAML loader contract:
+  1. Spec artifacts discovered from `specs/` should use the filename convention `{spec_name}.sgm.yaml`.
+  2. The document must be a mapping with core metadata fields such as `id`, `title`, `version`, `status`, `author`, and `text`.
+  3. `governs` is a list of selector mappings.
+  4. Each `governs` entry must include a `selector`.
+  5. `governs` entries may omit `priority`; when omitted, the loader defaults it to `1`.
+  6. If `priority` is present, it must be an integer.
+  7. This spec naturally splashes into the spec documents themselves, the YAML loader, the shared spec models/renderers, and the loader-focused tests.
+
+governs:
+  - selector: "specs/**"
+    priority: 1
+  - selector: "src/sgm/adapters/spec_loader.py"
+    priority: 1
+  - selector: "src/sgm/domain/models.py"
+    priority: 1
+  - selector: "src/sgm/domain/renderers.py"
+    priority: 1
+  - selector: "tests/unit/test_spec_loader.py"
+    priority: 1
+  - selector: "tests/unit/test_spec_deltas.py"
+    priority: 1

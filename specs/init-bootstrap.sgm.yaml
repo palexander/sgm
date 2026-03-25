@@ -1,0 +1,31 @@
+id: spec-sgm-init-001
+title: "SGM Init Bootstrap"
+version: 1
+status: active
+author: paul
+
+text: |
+  `sgm init` should bootstrap the minimum repo-local scaffolding for SGM:
+  1. It creates the standard directories needed for specs, decisions, and local SGM state.
+  2. It ensures `.gitignore` excludes only high-churn working state.
+  3. It creates or updates `AGENTS.md` with repo-wide SGM workflow guidance.
+  4. That generated guidance should recommend keeping modules aligned with a single spec concern when practical.
+  5. If `CLAUDE.md` exists, it appends concise Claude-facing SGM instructions there instead of inventing a new Claude file.
+  6. It prints explicit offers about whether repo-local SGM guidance should live in `CLAUDE.md` or `AGENTS.md`.
+  7. This spec naturally splashes into the init command, filesystem scaffolding, the repo guidance docs it updates, and the init-focused tests that exercise that behavior.
+
+governs:
+  - selector: "specs/init-bootstrap.sgm.yaml"
+    priority: 1
+  - selector: "src/sgm/cli.py"
+    priority: 1
+  - selector: "src/sgm/application/services.py"
+    priority: 1
+  - selector: "src/sgm/adapters/filesystem.py"
+    priority: 1
+  - selector: "tests/integration/test_init.py"
+    priority: 1
+  - selector: "README.md"
+    priority: 2
+  - selector: "AGENTS.md"
+    priority: 2

@@ -1,0 +1,27 @@
+id: spec-sgm-cli-workflow-001
+title: "SGM CLI Workflow"
+version: 1
+status: active
+author: paul
+
+text: |
+  Work on SGM should preserve the core agent workflow:
+  1. `sgm context <spec-file-or-id>` returns the governing spec text and all governed files before code is changed.
+  2. `sgm validate` validates all active specs against the current repo change set without requiring manual sync.
+  3. Spec edits are picked up from disk automatically and surfaced as focused `[SPEC-DELTA]` output.
+  4. When implementing a spec, the main agent should act as orchestrator and hand the implementation work to a sub-agent.
+  5. Implementation should prefer modules that align with a single spec concern so per-spec work and commits stay coherent.
+  6. Governance expands through explicit proposals when work reaches ungoverned files.
+  7. `sgm sync` is a debug and rebuild tool, not a normal prerequisite for agents.
+
+governs:
+  - selector: "specs/**"
+    priority: 1
+  - selector: "src/sgm/**"
+    priority: 1
+  - selector: "tests/**"
+    priority: 1
+  - selector: "README.md"
+    priority: 2
+  - selector: "AGENTS.md"
+    priority: 2
