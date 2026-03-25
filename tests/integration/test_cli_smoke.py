@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 from tests.integration.helpers import bump_spec_version, create_sample_repo, run_cli
 
 
-def test_cli_smoke_flow(
+def test_cli_spec_first_flow(
     tmp_path: Path,
     sgm_executable: Path,
 ) -> None:
@@ -15,80 +16,70 @@ def test_cli_smoke_flow(
         sgm_executable,
         sample_repo.root,
         "context",
-        "src/services/discharge.ts",
+        "specs/rpc-service-pattern.sgm.yaml",
     )
     assert context_result.returncode == 0
-    assert "[SPECS] 1 governing" in context_result.stdout
-    assert "[SIBLINGS] 2 other files under spec-001" in context_result.stdout
+    assert "[SPEC] 1 governing" in context_result.stdout
+    assert "All changes for this spec must stay within the files governed by it:" in (
+        context_result.stdout
+    )
+    assert "[FILES] 3 governed" in context_result.stdout
+    assert "src/services/discharge.ts" in context_result.stdout
+    assert "src/services/bad-handler.ts" in context_result.stdout
+    assert "src/services/nested/extra.ts" in context_result.stdout
+    assert "src/middleware/auth.ts" not in context_result.stdout
+
+    validate_clean = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+        "--no-record",
+    )
+    assert validate_clean.returncode == 0
+    assert "[PASS] no changed files for spec-001" in validate_clean.stdout
+
+    discharge_path = sample_repo.root / "src" / "services" / "discharge.ts"
+    discharge_path.write_text(
+        "export const handler = (): string => 'updated';\n",
+        encoding="utf-8",
+    )
 
     validate_pass = run_cli(
         sgm_executable,
         sample_repo.root,
         "validate",
-        "src/services/discharge.ts",
         "--no-record",
     )
     assert validate_pass.returncode == 0
-    assert "[PASS] 2/2 assertions" in validate_pass.stdout
+    assert "[PASS] all 1 changed file(s) stayed within spec-001" in validate_pass.stdout
+    assert "src/services/discharge.ts" in validate_pass.stdout
+
+    validate_record = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+    )
+    assert validate_record.returncode == 0
+    assert "[PASS] all 1 changed file(s) stayed within spec-001 (recorded)" in (
+        validate_record.stdout
+    )
+    assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
+
+    auth_path = sample_repo.root / "src" / "middleware" / "auth.ts"
+    auth_path.write_text(
+        "export const auth = (): string => 'pending';\n",
+        encoding="utf-8",
+    )
 
     validate_fail = run_cli(
         sgm_executable,
         sample_repo.root,
         "validate",
-        "src/services/bad-handler.ts",
-    )
-    assert validate_fail.returncode == 2
-    assert "[FAIL] 2/2" in validate_fail.stdout
-    assert "(recorded)" in validate_fail.stdout
-    assert "spec-001 compliance:" in validate_fail.stdout
-    assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
-
-    context_after_record = run_cli(
-        sgm_executable,
-        sample_repo.root,
-        "context",
-        "src/services/bad-handler.ts",
-    )
-    assert "compliance=" in context_after_record.stdout
-
-    bump_spec_version(sample_repo.spec_path)
-    context_with_delta = run_cli(
-        sgm_executable,
-        sample_repo.root,
-        "context",
-        "src/services/bad-handler.ts",
-    )
-    assert "[SPEC-DELTA] spec-001 specs/rpc-service-pattern.yaml changed since last ingest" in (
-        context_with_delta.stdout
-    )
-    assert "--- a/specs/rpc-service-pattern.yaml" in context_with_delta.stdout
-    assert "+++ b/specs/rpc-service-pattern.yaml" in context_with_delta.stdout
-    assert "-version: 1" in context_with_delta.stdout
-    assert "+version: 2" in context_with_delta.stdout
-
-    bump_spec_version(sample_repo.spec_path, version=3)
-    validate_with_delta = run_cli(
-        sgm_executable,
-        sample_repo.root,
-        "validate",
-        "src/services/bad-handler.ts",
         "--no-record",
     )
-    assert "[SPEC-DELTA] spec-001 specs/rpc-service-pattern.yaml changed since last ingest" in (
-        validate_with_delta.stdout
-    )
-    assert "-version: 2" in validate_with_delta.stdout
-    assert "+version: 3" in validate_with_delta.stdout
-
-    ungoverned_context = run_cli(
-        sgm_executable,
-        sample_repo.root,
-        "context",
-        "src/middleware/auth.ts",
-    )
-    assert ungoverned_context.returncode == 0
-    assert "[DECISIONS] 1 informing" in ungoverned_context.stdout
-    assert "dec-001 Move validation to middleware boundary [active]" in ungoverned_context.stdout
+    assert validate_fail.returncode == 2
+    assert "[FAIL] 1 changed file(s) outside spec-001" in validate_fail.stdout
+    assert "src/middleware/auth.ts" in validate_fail.stdout
 
     propose_result = run_cli(
         sgm_executable,
@@ -105,16 +96,15 @@ def test_cli_smoke_flow(
         sample_repo.root / ".sgm" / "work" / "proposals" / f"{proposal_id}.json"
     ).is_file()
 
-    list_result = run_cli(
+    validate_warn = run_cli(
         sgm_executable,
         sample_repo.root,
-        "proposals",
-        "list",
-        "--status",
-        "pending",
+        "validate",
+        "--no-record",
     )
-    assert list_result.returncode == 0
-    assert proposal_id in list_result.stdout
+    assert validate_warn.returncode == 1
+    assert "[WARN] 1 changed file(s) pending governance for spec-001" in validate_warn.stdout
+    assert proposal_id in validate_warn.stdout
 
     approve_result = run_cli(
         sgm_executable,
@@ -130,10 +120,20 @@ def test_cli_smoke_flow(
         sgm_executable,
         sample_repo.root,
         "context",
-        "src/middleware/auth.ts",
+        "specs/rpc-service-pattern.sgm.yaml",
     )
     assert governed_context.returncode == 0
-    assert "[SPECS] 1 governing" in governed_context.stdout
+    assert "[FILES] 4 governed" in governed_context.stdout
+    assert "src/middleware/auth.ts" in governed_context.stdout
+
+    validate_after_approve = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+        "--no-record",
+    )
+    assert validate_after_approve.returncode == 0
+    assert "[PASS] all 2 changed file(s) stayed within spec-001" in validate_after_approve.stdout
 
     persist_proposal_result = run_cli(
         sgm_executable,
@@ -147,24 +147,49 @@ def test_cli_smoke_flow(
     assert not (
         sample_repo.root / ".sgm" / "work" / "proposals" / f"{proposal_id}.json"
     ).exists()
-    governed_context_after_persist = run_cli(
+
+    subprocess.run(["git", "add", "."], cwd=sample_repo.root, check=True)
+    subprocess.run(["git", "commit", "-qm", "governed changes"], cwd=sample_repo.root, check=True)
+
+    bump_spec_version(sample_repo.spec_path)
+    context_with_delta = run_cli(
         sgm_executable,
         sample_repo.root,
         "context",
-        "src/middleware/auth.ts",
+        "specs/rpc-service-pattern.sgm.yaml",
     )
-    assert governed_context_after_persist.returncode == 0
-    assert "[SPECS] 1 governing" in governed_context_after_persist.stdout
+    assert "[SPEC-DELTA] spec-001 specs/rpc-service-pattern.sgm.yaml changed since last ingest" in (
+        context_with_delta.stdout
+    )
+    assert "--- a/specs/rpc-service-pattern.sgm.yaml" in context_with_delta.stdout
+    assert "+++ b/specs/rpc-service-pattern.sgm.yaml" in context_with_delta.stdout
+    assert "-version: 1" in context_with_delta.stdout
+    assert "+version: 2" in context_with_delta.stdout
 
-    sync_files = run_cli(
+    bump_spec_version(sample_repo.spec_path, version=3)
+    validate_with_delta = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+        "--no-record",
+    )
+    assert validate_with_delta.returncode == 0
+    assert "[PASS] all 1 changed file(s) stayed within spec-001" in validate_with_delta.stdout
+    assert "[SPEC-DELTA] spec-001 specs/rpc-service-pattern.sgm.yaml changed since last ingest" in (
+        validate_with_delta.stdout
+    )
+    assert "-version: 2" in validate_with_delta.stdout
+    assert "+version: 3" in validate_with_delta.stdout
+
+    sync_decision = run_cli(
         sgm_executable,
         sample_repo.root,
         "sync",
         "decision",
         "decisions/move-validation-boundary.yaml",
     )
-    assert sync_files.returncode == 0
-    assert "ingested dec-001" in sync_files.stdout
+    assert sync_decision.returncode == 0
+    assert "ingested dec-001" in sync_decision.stdout
 
     sync_files = run_cli(
         sgm_executable,
@@ -182,7 +207,7 @@ def test_cli_smoke_flow(
         sample_repo.root,
         "sync",
         "spec",
-        "specs/rpc-service-pattern.yaml",
+        "specs/rpc-service-pattern.sgm.yaml",
     )
     assert sync_spec_v2.returncode == 0
 
@@ -190,16 +215,9 @@ def test_cli_smoke_flow(
         sgm_executable,
         sample_repo.root,
         "context",
-        "src/services/bad-handler.ts",
+        "specs/rpc-service-pattern.sgm.yaml",
     )
     assert "[SPEC-DELTA]" not in context_after_bump.stdout
-    before_line = next(
-        line for line in context_after_record.stdout.splitlines() if "compliance=" in line
-    )
-    after_line = next(
-        line for line in context_after_bump.stdout.splitlines() if "compliance=" in line
-    )
-    assert before_line == after_line
 
     persist_validation_result = run_cli(
         sgm_executable,
@@ -212,7 +230,7 @@ def test_cli_smoke_flow(
     assert not tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
 
 
-def test_validate_no_record_leaves_compliance_unchanged(
+def test_validate_no_record_leaves_recorded_state_unchanged(
     tmp_path: Path,
     sgm_executable: Path,
 ) -> None:
@@ -222,17 +240,16 @@ def test_validate_no_record_leaves_compliance_unchanged(
         sgm_executable,
         sample_repo.root,
         "validate",
-        "src/services/bad-handler.ts",
         "--no-record",
     )
-    assert dry_run.returncode == 2
+    assert dry_run.returncode == 0
     assert "(recorded)" not in dry_run.stdout
-    assert "compliance:" not in dry_run.stdout
+    assert not tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
 
     context_result = run_cli(
         sgm_executable,
         sample_repo.root,
         "context",
-        "src/services/bad-handler.ts",
+        "specs/rpc-service-pattern.sgm.yaml",
     )
-    assert "compliance=" not in context_result.stdout
+    assert "[FILES] 3 governed" in context_result.stdout

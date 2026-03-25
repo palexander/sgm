@@ -69,7 +69,10 @@ class FileSystemAdapter:
         for path in sorted(specs_root.rglob("*")):
             if not path.is_file():
                 continue
-            if path.suffix not in {".yaml", ".yml"}:
+            if not (
+                path.name.endswith(".sgm.yaml")
+                or path.name.endswith(".sgm.yml")
+            ):
                 continue
             spec_paths.append(to_repo_relative_posix(self.repo_root, str(path)))
         return tuple(spec_paths)
@@ -87,3 +90,24 @@ class FileSystemAdapter:
                 continue
             decision_paths.append(to_repo_relative_posix(self.repo_root, str(path)))
         return tuple(decision_paths)
+
+    def ensure_directory(self, relative_path: str) -> bool:
+        target_path = self.repo_root / relative_path
+        if target_path.is_dir():
+            return False
+        target_path.mkdir(parents=True, exist_ok=True)
+        return True
+
+    def file_exists(self, relative_path: str) -> bool:
+        return (self.repo_root / relative_path).exists()
+
+    def read_optional_text(self, relative_path: str) -> str | None:
+        target_path = self.repo_root / relative_path
+        if not target_path.is_file():
+            return None
+        return target_path.read_text(encoding="utf-8")
+
+    def write_text(self, relative_path: str, content: str) -> None:
+        target_path = self.repo_root / relative_path
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(content, encoding="utf-8")

@@ -1,35 +1,30 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
-from sgm.adapters.decision_loader import load_decision_document
 from sgm.adapters.filesystem import FileSystemAdapter
 from sgm.adapters.repository import GraphRepository
-from sgm.adapters.spec_loader import load_spec_document
 from sgm.adapters.system import SystemAdapter
-from sgm.domain.errors import EntityNotFoundError, FileNotFoundOnDiskError, NotIndexedError
+from sgm.application.context_service import ContextService
+from sgm.application.init_service import InitService
+from sgm.application.refresh_service import RefreshService
+from sgm.application.validation_service import ValidationService
 from sgm.domain.models import (
     ApprovalResult,
-    ComplianceSnapshot,
-    ContextResponse,
-    GoverningSpec,
+    InitResult,
     PersistResult,
     ProposalListResult,
     ProposalStatus,
     ProposeResult,
     RejectResult,
-    RelatedDecision,
     RepoContext,
-    SpecDelta,
+    SpecContextResponse,
     SyncDecisionResult,
     SyncFilesResult,
     SyncSpecResult,
-    ValidationReport,
-    ValidationSummary,
+    ValidationSuiteReport,
 )
-from sgm.domain.paths import normalize_scan_root, to_repo_relative_posix
-from sgm.domain.spec_deltas import build_spec_delta
-from sgm.domain.validation import validate_assertions
+from sgm.domain.paths import to_repo_relative_posix
 
 
 @dataclass(slots=True)
@@ -40,127 +35,26 @@ class SgmService:
     system: SystemAdapter
 
     def refresh(self) -> None:
-        self.graph_repository.sync_files(".", self.filesystem.scan("."))
-        spec_paths: tuple[str, ...] = self.filesystem.list_spec_files()
-        for spec_path in spec_paths:
-            spec = load_spec_document(
-                self.repo_context.root / spec_path,
-                self.repo_context.root,
-            )
-            self.graph_repository.sync_spec(spec)
-        self.graph_repository.prune_specs(spec_paths)
-        decision_paths: tuple[str, ...] = self.filesystem.list_decision_files()
-        for decision_path in decision_paths:
-            decision = load_decision_document(
-                self.repo_context.root / decision_path,
-                self.repo_context.root,
-            )
-            self.graph_repository.sync_decision(decision)
-        self.graph_repository.prune_decisions(decision_paths)
+        self._refresh_service().refresh()
 
     def sync_files(self, scan_root: str | None) -> SyncFilesResult:
-        normalized_root: str = normalize_scan_root(self.repo_context.root, scan_root)
-        nodes = self.filesystem.scan(normalized_root)
-        return self.graph_repository.sync_files(normalized_root, nodes)
+        return self._refresh_service().sync_files(scan_root)
 
     def sync_spec(self, yaml_path: str) -> SyncSpecResult:
-        normalized_path: str = to_repo_relative_posix(self.repo_context.root, yaml_path)
-        spec = load_spec_document(
-            self.repo_context.root / normalized_path,
-            self.repo_context.root,
-        )
-        return self.graph_repository.sync_spec(spec)
+        return self._refresh_service().sync_spec(yaml_path)
 
     def sync_decision(self, yaml_path: str) -> SyncDecisionResult:
-        normalized_path: str = to_repo_relative_posix(self.repo_context.root, yaml_path)
-        decision = load_decision_document(
-            self.repo_context.root / normalized_path,
-            self.repo_context.root,
-        )
-        return self.graph_repository.sync_decision(decision)
+        return self._refresh_service().sync_decision(yaml_path)
 
-    def context(self, raw_target_path: str) -> ContextResponse:
-        target_path: str = to_repo_relative_posix(self.repo_context.root, raw_target_path)
-        response: ContextResponse = self.graph_repository.get_context(target_path)
-        return ContextResponse(
-            target_path=response.target_path,
-            specs=self._with_spec_deltas(response.specs),
-            decisions=self._active_decisions(response.decisions),
-            siblings=response.siblings,
-            indexed=response.indexed,
-        )
+    def context(self, spec_ref: str) -> SpecContextResponse:
+        return self._context_service().context(spec_ref)
 
     def validate(
         self,
-        raw_target_path: str,
+        spec_ref: str | None,
         record: bool,
-    ) -> tuple[ValidationReport, dict[str, float], dict[str, tuple[float, int, int]]]:
-        target_path: str = to_repo_relative_posix(self.repo_context.root, raw_target_path)
-        try:
-            file_content: str = self.filesystem.read_text(target_path)
-        except FileNotFoundOnDiskError:
-            raise
-
-        context_response: ContextResponse = self.graph_repository.get_context(target_path)
-        if not context_response.indexed:
-            raise NotIndexedError("target file missing from graph")
-        if not context_response.specs:
-            return ValidationReport(spec_summaries=()), {}, {}
-
-        try:
-            assertions_by_spec = self.graph_repository.get_assertions_for_path(target_path)
-        except EntityNotFoundError as error:
-            raise NotIndexedError(str(error)) from error
-
-        previous = self.graph_repository.get_existing_scores(target_path)
-        governing_specs: tuple[GoverningSpec, ...] = self._with_spec_deltas(
-            context_response.specs
-        )
-        summaries: list[ValidationSummary] = []
-        updated: dict[str, tuple[float, int, int]] = {}
-        for spec in governing_specs:
-            spec_id: str = spec.id
-            assertions = assertions_by_spec.get(spec_id, ())
-            summary = validate_assertions(
-                path=target_path,
-                file_content=file_content,
-                assertions=assertions,
-            )
-            summary = ValidationSummary(
-                spec_id=spec_id,
-                results=summary.results,
-                total_checks=summary.total_checks,
-                passed_checks=summary.passed_checks,
-                failed_errors=summary.failed_errors,
-                failed_warnings=summary.failed_warnings,
-                inconclusive_warnings=summary.inconclusive_warnings,
-            )
-            summaries.append(summary)
-            if record:
-                persisted_snapshot: ComplianceSnapshot = self.graph_repository.record_validation(
-                    spec_id=spec_id,
-                    target_path=target_path,
-                    total_checks=summary.total_checks,
-                    passed_checks=summary.passed_checks,
-                    failed_errors=summary.failed_errors,
-                    failed_warnings=summary.failed_warnings,
-                )
-                updated[spec_id] = (
-                    persisted_snapshot.score,
-                    persisted_snapshot.passed_checks,
-                    persisted_snapshot.total_checks,
-                )
-        previous_scores: dict[str, float] = {
-            spec_id: snapshot.score for spec_id, snapshot in previous.items()
-        }
-        spec_deltas: tuple[SpecDelta, ...] = tuple(
-            spec.spec_delta for spec in governing_specs if spec.spec_delta is not None
-        )
-        return (
-            ValidationReport(spec_summaries=tuple(summaries), spec_deltas=spec_deltas),
-            previous_scores,
-            updated,
-        )
+    ) -> ValidationSuiteReport:
+        return self._validation_service().validate(spec_ref, record)
 
     def propose(self, spec_id: str, raw_path: str, reason: str) -> ProposeResult:
         path: str = to_repo_relative_posix(self.repo_context.root, raw_path)
@@ -183,23 +77,23 @@ class SgmService:
     def persist(self) -> PersistResult:
         return self.graph_repository.persist()
 
-    def _with_spec_deltas(
-        self,
-        specs: tuple[GoverningSpec, ...],
-    ) -> tuple[GoverningSpec, ...]:
-        enriched_specs: list[GoverningSpec] = []
-        for spec in specs:
-            spec_delta: SpecDelta | None = build_spec_delta(
-                spec_id=spec.id,
-                source_path=spec.source_path,
-                previous_text=spec.previous_source_text,
-                current_text=spec.source_text,
-            )
-            enriched_specs.append(replace(spec, spec_delta=spec_delta))
-        return tuple(enriched_specs)
+    def init(self) -> InitResult:
+        return InitService(filesystem=self.filesystem).init()
 
-    def _active_decisions(
-        self,
-        decisions: tuple[RelatedDecision, ...],
-    ) -> tuple[RelatedDecision, ...]:
-        return decisions
+    def _refresh_service(self) -> RefreshService:
+        return RefreshService(
+            repo_context=self.repo_context,
+            graph_repository=self.graph_repository,
+            filesystem=self.filesystem,
+        )
+
+    def _context_service(self) -> ContextService:
+        return ContextService(graph_repository=self.graph_repository)
+
+    def _validation_service(self) -> ValidationService:
+        return ValidationService(
+            repo_context=self.repo_context,
+            graph_repository=self.graph_repository,
+            system=self.system,
+            context_service=self._context_service(),
+        )

@@ -24,6 +24,7 @@ from sgm.domain.paths import ensure_repo_root
 from sgm.domain.renderers import (
     render_approval,
     render_context,
+    render_init,
     render_persist,
     render_proposals,
     render_propose,
@@ -56,48 +57,45 @@ def _service() -> SgmService:
 
 @app.command()
 def context(
-    path: Annotated[str, typer.Argument(help="Repo-relative path to inspect.")],
+    spec: Annotated[
+        str,
+        typer.Argument(help="Spec id, repo-relative spec path, or unique spec filename."),
+    ],
 ) -> None:
-    _run_command(lambda service: _context(service, path))
+    _run_command(lambda service: _context(service, spec))
 
 
-def _context(service: SgmService, path: str) -> ExitCode:
-    response = service.context(path)
+def _context(service: SgmService, spec: str) -> ExitCode:
+    response = service.context(spec)
     typer.echo(render_context(response))
     return 0
 
 
 @app.command()
 def validate(
-    path: Annotated[str, typer.Argument(help="Repo-relative path to validate.")],
+    spec: Annotated[
+        str | None,
+        typer.Argument(
+            help="Optional spec id, repo-relative spec path, or unique spec filename."
+        ),
+    ] = None,
     record: Annotated[
         bool,
         typer.Option(
             "--record/--no-record",
-            help="Record compliance state by default; use --no-record for a dry run.",
+            help="Record validation state by default; use --no-record for a dry run.",
         ),
     ] = True,
 ) -> None:
-    _run_command(lambda service: _validate(service, path, record))
+    _run_command(lambda service: _validate(service, spec, record))
 
 
-def _validate(service: SgmService, path: str, record: bool) -> ExitCode:
-    report, previous_scores, updated_scores = service.validate(path, record)
-    typer.echo(
-        render_validation(
-            report=report,
-            recorded=record,
-            previous_scores=previous_scores,
-            updated_scores=updated_scores,
-        )
-    )
-    if not report.spec_summaries:
-        return 0
-    has_error: bool = any(summary.failed_errors > 0 for summary in report.spec_summaries)
-    has_warning: bool = any(summary.failed_warnings > 0 for summary in report.spec_summaries)
-    if has_error:
+def _validate(service: SgmService, spec: str | None, record: bool) -> ExitCode:
+    suite = service.validate(spec, record)
+    typer.echo(render_validation(suite=suite, recorded=record))
+    if any(report.error_files for report in suite.reports):
         return 2
-    if has_warning:
+    if any(report.warning_files for report in suite.reports):
         return 1
     return 0
 
@@ -123,6 +121,16 @@ def persist() -> None:
 
 def _persist(service: SgmService) -> ExitCode:
     typer.echo(render_persist(service.persist()))
+    return 0
+
+
+@app.command()
+def init() -> None:
+    _run_command(_init, auto_refresh=False)
+
+
+def _init(service: SgmService) -> ExitCode:
+    typer.echo(render_init(service.init()))
     return 0
 
 

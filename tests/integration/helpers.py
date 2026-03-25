@@ -23,47 +23,41 @@ def create_sample_repo(tmp_path: Path) -> SampleRepo:
     (repo_root / "src" / "services").mkdir(parents=True)
     (repo_root / "src" / "services" / "nested").mkdir(parents=True)
     (repo_root / "src" / "middleware").mkdir(parents=True)
-    (repo_root / "src" / "proto").mkdir(parents=True)
     (repo_root / "decisions").mkdir(parents=True)
     (repo_root / "specs").mkdir(parents=True)
-
-    _write(
-        repo_root / "src" / "proto" / "discharge_pb.ts",
-        "export type DischargeRequest = { id: string }\n",
-    )
     _write(
         repo_root / "src" / "services" / "discharge.ts",
-        "\n".join(
-            [
-                "import { DischargeRequest } from '../proto/discharge_pb'",
-                "export const handler = (_request: DischargeRequest): void => {};",
-            ]
-        )
-        + "\n",
+        "export const handler = (): void => {};\n",
     )
     _write(
         repo_root / "src" / "services" / "bad-handler.ts",
-        "\n".join(
-            [
-                "import { sql } from 'drizzle-orm'",
-                "export const handler = (): string => sql.toString();",
-            ]
-        )
-        + "\n",
+        "export const handler = (): string => 'bad';\n",
     )
     _write(
         repo_root / "src" / "services" / "nested" / "extra.ts",
-        "import { DischargeRequest } from '../../proto/discharge_pb'\n",
+        "export const extra = (): boolean => true;\n",
     )
     _write(
         repo_root / "src" / "middleware" / "auth.ts",
         "export const auth = (): boolean => true;\n",
     )
-    spec_path = repo_root / "specs" / "rpc-service-pattern.yaml"
+    spec_path = repo_root / "specs" / "rpc-service-pattern.sgm.yaml"
     _write(spec_path, _spec_yaml(version=1))
     _write(repo_root / "decisions" / "move-validation-boundary.yaml", _decision_yaml())
 
     subprocess.run(["git", "init", "-q"], cwd=repo_root, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "sgm@example.com"],
+        cwd=repo_root,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "SGM Tests"],
+        cwd=repo_root,
+        check=True,
+    )
+    subprocess.run(["git", "add", "."], cwd=repo_root, check=True)
+    subprocess.run(["git", "commit", "-qm", "baseline"], cwd=repo_root, check=True)
     return SampleRepo(root=repo_root, spec_path=spec_path)
 
 
@@ -102,28 +96,20 @@ def _spec_yaml(version: int) -> str:
             f"version: {version}",
             "status: active",
             "author: paul",
-            "warn_below: 0.8",
             "text: |",
-            "  All RPC service handlers must:",
-            "  1. Accept and return Protobuf-generated types only",
-            "  2. Never access the database directly",
-            "assertions:",
-            "  - id: assert-001",
-            '    rule: "No direct database imports in service handlers"',
-            '    hint: "Use a repository layer instead of DB packages."',
-            "    kind: structural",
-            "    severity: error",
-            "    check: file-import-deny",
-            "    config:",
-            '      deny: ["drizzle-orm", "pg"]',
-            "  - id: assert-002",
-            '    rule: "Handler files must import generated proto types"',
-            '    hint: "Import from generated *_pb modules."',
-            "    kind: structural",
-            "    severity: warning",
-            "    check: file-import-require",
-            "    config:",
-            '      require: ["_pb"]',
+            "  All changes for this spec must stay within the files governed by it:",
+            (
+                "  1. `sgm context specs/rpc-service-pattern.sgm.yaml` should "
+                "surface the full spec context"
+            ),
+            (
+                "  2. `sgm validate` should validate all active specs against "
+                "the current repo change set"
+            ),
+            (
+                "  3. Files outside the governed scope require an explicit "
+                "proposal before they become in-scope"
+            ),
             "governs:",
             '  - selector: "src/services/**"',
             "    priority: 1",

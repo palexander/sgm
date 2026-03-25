@@ -10,13 +10,7 @@ from uuid import uuid4
 from sgm.domain.errors import EntityNotFoundError, InfrastructureError
 from sgm.domain.models import (
     ApprovalResult,
-    Assertion,
-    AssertionDocument,
-    AssertionKind,
-    AssertionSeverity,
     CodeNode,
-    ComplianceSnapshot,
-    ContextResponse,
     DecisionDocument,
     DecisionStatus,
     GoverningSpec,
@@ -27,12 +21,12 @@ from sgm.domain.models import (
     ProposeResult,
     RejectResult,
     RelatedDecision,
+    SpecContextResponse,
     SpecDocument,
     SyncDecisionResult,
     SyncFilesResult,
     SyncSpecResult,
 )
-from sgm.domain.scoring import compute_score
 from sgm.domain.selectors import matches_selector
 
 
@@ -43,18 +37,16 @@ class GraphRepository(Protocol):
     def sync_decision(self, decision: DecisionDocument) -> SyncDecisionResult: ...
     def prune_specs(self, source_paths: tuple[str, ...]) -> None: ...
     def prune_decisions(self, source_paths: tuple[str, ...]) -> None: ...
-    def get_context(self, target_path: str) -> ContextResponse: ...
-    def get_assertions_for_path(self, target_path: str) -> dict[str, tuple[Assertion, ...]]: ...
-    def get_existing_scores(self, target_path: str) -> dict[str, ComplianceSnapshot]: ...
+    def list_active_specs(self) -> tuple[str, ...]: ...
+    def get_context(self, spec_ref: str) -> SpecContextResponse: ...
     def record_validation(
         self,
         spec_id: str,
         target_path: str,
-        total_checks: int,
-        passed_checks: int,
-        failed_errors: int,
-        failed_warnings: int,
-    ) -> ComplianceSnapshot: ...
+        changed_files: tuple[str, ...],
+        warning_files: tuple[str, ...],
+        error_files: tuple[str, ...],
+    ) -> None: ...
     def create_proposal(
         self,
         proposal_id: str,
@@ -172,16 +164,11 @@ class FileRepository:
             "text": spec.text,
             "status": spec.status,
             "author": spec.author,
-            "warn_below": spec.warn_below,
-            "assertions": [
-                self._assertion_document_to_state(assertion) for assertion in spec.assertions
-            ],
             "governs": governs,
         }
         self._write_state(state)
         return SyncSpecResult(
             spec_id=spec.id,
-            assertion_count=len(spec.assertions),
             governed_count=len(matched_paths),
             selectors=tuple(selector.selector for selector in spec.governs),
         )
@@ -233,75 +220,51 @@ class FileRepository:
                 state["decisions"].pop(decision_id, None)
         self._write_state(state)
 
-    def get_context(self, target_path: str) -> ContextResponse:
+    def list_active_specs(self) -> tuple[str, ...]:
         state = self._load_state()
-        if target_path not in state["code_nodes"]:
-            return ContextResponse(
-                target_path=target_path,
-                specs=(),
-                decisions=(),
-                siblings=(),
-                indexed=False,
-            )
+        active_specs = [
+            cast(str, spec_data["source_path"])
+            for spec_data in cast(dict[str, dict[str, Any]], state["specs"]).values()
+            if cast(str, spec_data["status"]) == "active"
+        ]
+        return tuple(sorted(active_specs))
 
-        compliance_by_spec = self.get_existing_scores(target_path)
+    def get_context(self, spec_ref: str) -> SpecContextResponse:
+        state = self._load_state()
+        spec_id, spec_data = self._resolve_spec_ref(state, spec_ref)
         approved_paths = self._approved_paths_by_spec()
-
-        specs: list[GoverningSpec] = []
-        for spec_id, spec_data in state["specs"].items():
-            if spec_data["status"] != "active":
-                continue
-            governs = cast(dict[str, Any], spec_data["governs"])
-            selector_edge = cast(dict[str, Any] | None, governs.get(target_path))
-            proposal_governed = target_path in approved_paths.get(spec_id, set())
-            if selector_edge is None and not proposal_governed:
-                continue
-            priority = (
-                int(selector_edge["priority"])
-                if selector_edge is not None
-                else self._default_priority(governs)
-            )
-            compliance_data = compliance_by_spec.get(spec_id)
-            specs.append(
-                GoverningSpec(
-                    id=spec_id,
-                    source_path=cast(str, spec_data["source_path"]),
-                    source_text=cast(str, spec_data["source_text"]),
-                    previous_source_text=cast(str | None, spec_data.get("previous_source_text")),
-                    title=cast(str, spec_data["title"]),
-                    version=int(spec_data["version"]),
-                    text=cast(str, spec_data["text"]),
-                    warn_below=float(spec_data["warn_below"]),
-                    priority=priority,
-                    compliance_score=(
-                        compliance_data.score if compliance_data is not None else None
-                    ),
-                    passed_checks=(
-                        compliance_data.passed_checks if compliance_data is not None else None
-                    ),
-                    total_checks=(
-                        compliance_data.total_checks if compliance_data is not None else None
+        governs = cast(dict[str, Any], spec_data["governs"])
+        spec = GoverningSpec(
+            id=spec_id,
+            source_path=cast(str, spec_data["source_path"]),
+            source_text=cast(str, spec_data["source_text"]),
+            previous_source_text=cast(str | None, spec_data.get("previous_source_text")),
+            title=cast(str, spec_data["title"]),
+            version=int(spec_data["version"]),
+            text=cast(str, spec_data["text"]),
+            priority=self._default_priority(governs),
+            selectors=tuple(
+                selector["selector"]
+                for selector in sorted(
+                    governs.values(),
+                    key=lambda edge: (
+                        int(edge["priority"]),
+                        cast(str | None, edge["selector"]) or "",
                     ),
                 )
-            )
-        specs.sort(key=lambda spec: (spec.priority, spec.id))
-
-        siblings: tuple[str, ...] = ()
-        if specs:
-            sibling_paths: set[str] = set()
-            for spec in specs:
-                spec_data = cast(dict[str, Any], state["specs"][spec.id])
-                selector_paths = set(cast(dict[str, Any], spec_data["governs"]).keys())
-                sibling_paths.update(selector_paths)
-                sibling_paths.update(approved_paths.get(spec.id, set()))
-            sibling_paths.discard(target_path)
-            siblings = tuple(sorted(sibling_paths))
+                if cast(str | None, selector["selector"]) is not None
+            ),
+        )
+        governed_paths: set[str] = set(governs.keys())
+        governed_paths.update(approved_paths.get(spec_id, set()))
+        governed_files: tuple[str, ...] = tuple(sorted(governed_paths))
 
         decisions: list[RelatedDecision] = []
         for decision_id, decision_data in state["decisions"].items():
             if decision_data["status"] != "active":
                 continue
-            if target_path not in cast(list[str], decision_data["informs"]):
+            decision_paths = set(cast(list[str], decision_data["informs"]))
+            if decision_paths.isdisjoint(governed_paths):
                 continue
             decisions.append(
                 RelatedDecision(
@@ -314,82 +277,27 @@ class FileRepository:
                 )
             )
         decisions.sort(key=lambda decision: decision.id)
-
-        return ContextResponse(
-            target_path=target_path,
-            specs=tuple(specs),
-            decisions=tuple(decisions),
-            siblings=siblings,
-            indexed=True,
+        pending_proposals = tuple(
+            proposal
+            for proposal in self.list_proposals("pending").proposals
+            if proposal.spec_id == spec_id
         )
 
-    def get_assertions_for_path(self, target_path: str) -> dict[str, tuple[Assertion, ...]]:
-        state = self._load_state()
-        if target_path not in state["code_nodes"]:
-            raise EntityNotFoundError("target file missing from graph")
-
-        approved_paths = self._approved_paths_by_spec()
-        result: dict[str, tuple[Assertion, ...]] = {}
-        for spec_id, spec_data in state["specs"].items():
-            governs = cast(dict[str, Any], spec_data["governs"])
-            if spec_data["status"] != "active":
-                continue
-            if target_path not in governs and target_path not in approved_paths.get(spec_id, set()):
-                continue
-            assertion_rows = cast(list[dict[str, Any]], spec_data["assertions"])
-            assertions = tuple(
-                Assertion(
-                    id=cast(str, row["id"]),
-                    rule=cast(str, row["rule"]),
-                    hint=cast(str | None, row["hint"]),
-                    kind=cast(AssertionKind, row["kind"]),
-                    severity=cast(AssertionSeverity, row["severity"]),
-                    check=cast(str, row["check"]),
-                    config_json=cast(str, row["config_json"]),
-                )
-                for row in sorted(assertion_rows, key=lambda row: cast(str, row["id"]))
-            )
-            result[spec_id] = assertions
-        return result
-
-    def get_existing_scores(self, target_path: str) -> dict[str, ComplianceSnapshot]:
-        snapshots: dict[str, ComplianceSnapshot] = {}
-        for spec_id, record in self._iter_validation_records():
-            if record.path != target_path:
-                continue
-            previous = snapshots.get(spec_id)
-            if previous is None:
-                total_checks = record.total_checks
-                passed_checks = record.passed_checks
-                failed_errors = record.failed_errors
-                failed_warnings = record.failed_warnings
-            else:
-                total_checks = previous.total_checks + record.total_checks
-                passed_checks = previous.passed_checks + record.passed_checks
-                failed_errors = previous.failed_errors + record.failed_errors
-                failed_warnings = previous.failed_warnings + record.failed_warnings
-            snapshots[spec_id] = ComplianceSnapshot(
-                total_checks=total_checks,
-                passed_checks=passed_checks,
-                failed_errors=failed_errors,
-                failed_warnings=failed_warnings,
-                score=compute_score(
-                    passed_checks=passed_checks,
-                    failed_errors=failed_errors,
-                    failed_warnings=failed_warnings,
-                ),
-            )
-        return snapshots
+        return SpecContextResponse(
+            spec=spec,
+            decisions=tuple(decisions),
+            governed_files=governed_files,
+            pending_proposals=pending_proposals,
+        )
 
     def record_validation(
         self,
         spec_id: str,
         target_path: str,
-        total_checks: int,
-        passed_checks: int,
-        failed_errors: int,
-        failed_warnings: int,
-    ) -> ComplianceSnapshot:
+        changed_files: tuple[str, ...],
+        warning_files: tuple[str, ...],
+        error_files: tuple[str, ...],
+    ) -> None:
         state = self._load_state()
         spec_data = cast(dict[str, Any] | None, state["specs"].get(spec_id))
         if spec_data is None:
@@ -402,17 +310,12 @@ class FileRepository:
             "path": target_path,
             "source_path": cast(str, spec_data["source_path"]),
             "version": int(spec_data["version"]),
-            "total_checks": total_checks,
-            "passed_checks": passed_checks,
-            "failed_errors": failed_errors,
-            "failed_warnings": failed_warnings,
+            "changed_files": list(changed_files),
+            "warning_files": list(warning_files),
+            "error_files": list(error_files),
             "recorded_at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
         self._write_json_file(record_path, payload)
-        updated = self.get_existing_scores(target_path).get(spec_id)
-        if updated is None:
-            raise InfrastructureError("validation record was not persisted")
-        return updated
 
     def create_proposal(
         self,
@@ -530,17 +433,6 @@ class FileRepository:
         except OSError as error:
             raise InfrastructureError(f"failed to write state: {error}") from error
 
-    def _assertion_document_to_state(self, assertion: AssertionDocument) -> dict[str, Any]:
-        return {
-            "id": assertion.id,
-            "rule": assertion.rule,
-            "hint": assertion.hint,
-            "kind": assertion.kind,
-            "severity": assertion.severity,
-            "check": assertion.check,
-            "config_json": json.dumps(assertion.config, sort_keys=True),
-        }
-
     def _proposal_from_state(self, proposal_data: dict[str, Any]) -> Proposal:
         reviewed_at = cast(str | None, proposal_data["reviewed_at"])
         return Proposal(
@@ -553,28 +445,6 @@ class FileRepository:
             reviewed_at=datetime.fromisoformat(reviewed_at) if reviewed_at is not None else None,
             review_reason=cast(str | None, proposal_data["review_reason"]),
         )
-
-    def _iter_validation_records(self) -> tuple[tuple[str, _ValidationRecord], ...]:
-        records: list[tuple[str, _ValidationRecord]] = []
-        for root in (self.persisted_validations_root, self.work_validations_root):
-            if not root.is_dir():
-                continue
-            for path in sorted(root.rglob("*.json")):
-                payload = self._load_json_file(path)
-                spec_id = cast(str, payload["spec_id"])
-                records.append(
-                    (
-                        spec_id,
-                        _ValidationRecord(
-                            path=cast(str, payload["path"]),
-                            total_checks=int(payload["total_checks"]),
-                            passed_checks=int(payload["passed_checks"]),
-                            failed_errors=int(payload["failed_errors"]),
-                            failed_warnings=int(payload["failed_warnings"]),
-                        ),
-                    )
-                )
-        return tuple(records)
 
     def _load_proposal_rows(self) -> dict[str, dict[str, Any]]:
         rows: dict[str, dict[str, Any]] = {}
@@ -605,6 +475,35 @@ class FileRepository:
     def _default_priority(self, governs: dict[str, Any]) -> int:
         priorities = [int(edge["priority"]) for edge in governs.values()]
         return min(priorities) if priorities else 1
+
+    def _resolve_spec_ref(
+        self,
+        state: dict[str, Any],
+        spec_ref: str,
+    ) -> tuple[str, dict[str, Any]]:
+        specs = cast(dict[str, dict[str, Any]], state["specs"])
+        direct = specs.get(spec_ref)
+        if direct is not None:
+            return spec_ref, direct
+
+        source_matches = [
+            (spec_id, spec_data)
+            for spec_id, spec_data in specs.items()
+            if cast(str, spec_data["source_path"]) == spec_ref
+        ]
+        if len(source_matches) == 1:
+            return source_matches[0]
+
+        basename_matches = [
+            (spec_id, spec_data)
+            for spec_id, spec_data in specs.items()
+            if Path(cast(str, spec_data["source_path"])).name == spec_ref
+        ]
+        if len(basename_matches) == 1:
+            return basename_matches[0]
+        if len(basename_matches) > 1:
+            raise EntityNotFoundError(f"ambiguous spec reference: {spec_ref}")
+        raise EntityNotFoundError(f"spec not found: {spec_ref}")
 
     def _persist_files(self, source_root: Path, target_root: Path) -> int:
         if not source_root.is_dir():
@@ -650,15 +549,6 @@ class FileRepository:
                     path.rmdir()
                 except OSError:
                     continue
-
-
-@dataclass(frozen=True, slots=True)
-class _ValidationRecord:
-    path: str
-    total_checks: int
-    passed_checks: int
-    failed_errors: int
-    failed_warnings: int
 
 
 def _empty_state() -> dict[str, Any]:
