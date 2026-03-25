@@ -1,0 +1,50 @@
+[project]
+name = "sgm"
+version = "0.1.0"
+description = "Spec-governed graph memory for coding agents"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "gqlalchemy>=1.8.0,<2.0.0",
+  "PyYAML>=6.0.2,<7.0.0",
+  "typer>=0.24.1,<1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.2,<9.0.0",
+  "pytest-cov>=7.0.0,<8.0.0",
+  "ruff>=0.13.0,<1.0.0",
+  "testcontainers>=4.13.2,<5.0.0",
+  "ty>=0.0.24,<1.0.0",
+  "types-PyYAML>=6.0.12.20250915,<7.0.0",
+]
+
+[project.scripts]
+sgm = "sgm.cli:app"
+
+[build-system]
+requires = ["hatchling>=1.27.0,<2.0.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sgm"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
+
+[tool.ty.environment]
+python-version = "3.12"
+root = ["./src", "."]
+
+[tool.ty.analysis]
+replace-imports-with-any = ["gqlalchemy.**", "testcontainers.**"]

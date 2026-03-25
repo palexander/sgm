@@ -1,0 +1,9 @@
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+dist/
+htmlcov/
+__pycache__/
+*.pyc
+demo-repos/
