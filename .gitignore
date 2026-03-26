@@ -8,3 +8,4 @@ __pycache__/
 *.pyc
 demo-repos/
 .sgm/work/
+.sgm/persisted/validations/

@@ -27,7 +27,7 @@ class InitService:
 
         gitignore_changed = self._ensure_block(
             path=".gitignore",
-            block=".sgm/work/\n",
+            block=".sgm/work/\n.sgm/persisted/validations/\n",
             create_if_missing=True,
             heading=None,
         )

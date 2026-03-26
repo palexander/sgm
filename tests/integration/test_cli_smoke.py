@@ -141,12 +141,15 @@ def test_cli_spec_first_flow(
         "persist",
     )
     assert persist_proposal_result.returncode == 0
+    assert "persisted 1 proposals" in persist_proposal_result.stdout
     assert (
         sample_repo.root / ".sgm" / "persisted" / "proposals" / f"{proposal_id}.json"
     ).is_file()
     assert not (
         sample_repo.root / ".sgm" / "work" / "proposals" / f"{proposal_id}.json"
     ).exists()
+    assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
+    assert not tuple((sample_repo.root / ".sgm" / "persisted" / "validations").rglob("*.json"))
 
     subprocess.run(["git", "add", "."], cwd=sample_repo.root, check=True)
     subprocess.run(["git", "commit", "-qm", "governed changes"], cwd=sample_repo.root, check=True)
@@ -225,9 +228,9 @@ def test_cli_spec_first_flow(
         "persist",
     )
     assert persist_validation_result.returncode == 0
-    assert "persisted" in persist_validation_result.stdout
-    assert tuple((sample_repo.root / ".sgm" / "persisted" / "validations").rglob("*.json"))
-    assert not tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
+    assert "persisted 0 proposals" in persist_validation_result.stdout
+    assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
+    assert not tuple((sample_repo.root / ".sgm" / "persisted" / "validations").rglob("*.json"))
 
 
 def test_validate_no_record_leaves_recorded_state_unchanged(

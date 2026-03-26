@@ -393,16 +393,12 @@ class FileRepository:
         return RejectResult(proposal_id=proposal_id, review_reason=review_reason)
 
     def persist(self) -> PersistResult:
-        persisted_validations = self._persist_files(
-            source_root=self.work_validations_root,
-            target_root=self.persisted_validations_root,
-        )
         persisted_proposals = self._persist_files(
             source_root=self.work_proposals_root,
             target_root=self.persisted_proposals_root,
         )
         return PersistResult(
-            persisted_validations=persisted_validations,
+            persisted_validations=0,
             persisted_proposals=persisted_proposals,
         )
 

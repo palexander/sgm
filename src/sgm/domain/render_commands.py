@@ -33,10 +33,12 @@ def render_sync_decision(result: SyncDecisionResult) -> str:
 
 
 def render_persist(result: PersistResult) -> str:
-    return (
-        f"persisted {result.persisted_validations} validation records and "
-        f"{result.persisted_proposals} proposals"
-    )
+    if result.persisted_validations > 0:
+        return (
+            f"persisted {result.persisted_proposals} proposals and "
+            f"{result.persisted_validations} validation records"
+        )
+    return f"persisted {result.persisted_proposals} proposals"
 
 
 def render_init(result: InitResult) -> str:

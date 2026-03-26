@@ -27,7 +27,9 @@ def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Pat
     assert (repo_root / "decisions").is_dir()
     assert (repo_root / ".sgm" / "work").is_dir()
     assert (repo_root / ".sgm" / "persisted").is_dir()
-    assert ".sgm/work/" in (repo_root / ".gitignore").read_text(encoding="utf-8")
+    gitignore_text = (repo_root / ".gitignore").read_text(encoding="utf-8")
+    assert ".sgm/work/" in gitignore_text
+    assert ".sgm/persisted/validations/" in gitignore_text
     agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     assert (
         "Main agent: orchestrate spec work and hand implementation to a sub-agent."
