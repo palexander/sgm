@@ -33,7 +33,7 @@ uv run sgm persist
 Derived state is cached locally under `.sgm/work/state.json`.
 
 `sgm init` bootstraps `specs/`, `decisions/`, `.sgm/work/`, and `.sgm/persisted/`,
-ensures `.gitignore` excludes working state, adds SGM guidance to `AGENTS.md`,
+ensures `.gitignore` excludes working state and persisted validation records, adds SGM guidance to `AGENTS.md`,
 and updates `CLAUDE.md` when it already exists.
 
 Repo spec files should use the naming convention `specs/{spec_name}.sgm.yaml`.
@@ -72,9 +72,9 @@ should reduce that overlap.
 SGM separates durable repo artifacts from operational runtime state.
 
 - Check into Git: `specs/`, `decisions/`, and other reviewable governance files.
-- Keep out of Git: `.sgm/work/` caches, refresh indexes, locks, and per-run
-  working records.
-- Persist durable records into `.sgm/persisted/` with `uv run sgm persist`
-  before commit or PR handoff.
-- Prefer file-per-item or append-only shared artifacts in `.sgm/persisted/`
-  over a single mutable state file when collaboration needs durable history.
+- Keep out of Git: `.sgm/work/` caches, refresh indexes, locks, and validation
+  records, plus `.sgm/persisted/validations/`.
+- Persist durable proposal records into `.sgm/persisted/proposals/` with
+  `uv run sgm persist` before commit or PR handoff.
+- Keep proposals as the collaborative review record; keep routine validation
+  runs in working state rather than promoting every run into Git.
