@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-03-25T11:46:41",
+  "id": "prop-f4fbd5",
+  "path": "tests/unit/test_spec_loader.py",
+  "reason": "Add coverage for optional governs priority defaulting to 1 in the spec loader",
+  "review_reason": null,
+  "reviewed_at": null,
+  "spec_id": "spec-sgm-cli-workflow-001",
+  "status": "pending"
+}

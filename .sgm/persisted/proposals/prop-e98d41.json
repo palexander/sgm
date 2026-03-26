@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-03-25T12:16:35",
+  "id": "prop-e98d41",
+  "path": "specs/cli-workflow.sgm.yaml",
+  "reason": "Govern the renamed spec artifact under the .sgm.yaml convention",
+  "review_reason": null,
+  "reviewed_at": null,
+  "spec_id": "spec-sgm-cli-workflow-001",
+  "status": "pending"
+}
