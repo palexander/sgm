@@ -25,7 +25,6 @@ from sgm.domain.renderers import (
     render_approval,
     render_context,
     render_init,
-    render_persist,
     render_proposals,
     render_propose,
     render_rejection,
@@ -132,16 +131,6 @@ def propose(
 
 def _propose(service: SgmService, spec_id: str, path: str, reason: str) -> ExitCode:
     typer.echo(render_propose(service.propose(spec_id, path, reason)))
-    return 0
-
-
-@app.command(help="Maintenance/debug command for legacy proposal records.")
-def persist() -> None:
-    _run_command(_persist, auto_refresh=False)
-
-
-def _persist(service: SgmService) -> ExitCode:
-    typer.echo(render_persist(service.persist()))
     return 0
 
 

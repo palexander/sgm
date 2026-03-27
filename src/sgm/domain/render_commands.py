@@ -3,7 +3,6 @@ from __future__ import annotations
 from sgm.domain.models import (
     ApprovalResult,
     InitResult,
-    PersistResult,
     ProposalListResult,
     ProposeResult,
     RejectResult,
@@ -30,15 +29,6 @@ def render_sync_decision(result: SyncDecisionResult) -> str:
         f"ingested {result.decision_id}, "
         f"informs {result.informed_count} files matching {list(result.selectors)}"
     )
-
-
-def render_persist(result: PersistResult) -> str:
-    if result.persisted_validations > 0:
-        return (
-            f"persisted {result.persisted_proposals} proposals and "
-            f"{result.persisted_validations} validation records"
-        )
-    return f"persisted {result.persisted_proposals} proposals"
 
 
 def render_init(result: InitResult) -> str:

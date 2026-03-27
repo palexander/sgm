@@ -3,7 +3,6 @@ from __future__ import annotations
 from sgm.domain.render_commands import (
     render_approval,
     render_init,
-    render_persist,
     render_proposals,
     render_propose,
     render_rejection,
@@ -18,7 +17,6 @@ __all__ = [
     "render_approval",
     "render_context",
     "render_init",
-    "render_persist",
     "render_proposals",
     "render_propose",
     "render_rejection",

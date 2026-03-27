@@ -14,7 +14,6 @@ from sgm.domain.models import (
     DecisionDocument,
     DecisionStatus,
     GoverningSpec,
-    PersistResult,
     Proposal,
     ProposalListResult,
     ProposalStatus,
@@ -57,7 +56,6 @@ class GraphRepository(Protocol):
     def list_proposals(self, status: ProposalStatus | None) -> ProposalListResult: ...
     def approve_proposal(self, proposal_id: str) -> ApprovalResult: ...
     def reject_proposal(self, proposal_id: str, review_reason: str | None) -> RejectResult: ...
-    def persist(self) -> PersistResult: ...
 
 
 @dataclass(slots=True)
@@ -69,7 +67,6 @@ class FileRepository:
     work_validations_root: Path = field(init=False)
     persisted_root: Path = field(init=False)
     persisted_proposals_root: Path = field(init=False)
-    persisted_validations_root: Path = field(init=False)
 
     def __post_init__(self) -> None:
         self.work_root = self.repo_root / ".sgm" / "work"
@@ -78,7 +75,6 @@ class FileRepository:
         self.work_validations_root = self.work_root / "validations"
         self.persisted_root = self.repo_root / ".sgm" / "persisted"
         self.persisted_proposals_root = self.persisted_root / "proposals"
-        self.persisted_validations_root = self.persisted_root / "validations"
 
     def reset(self) -> None:
         self._write_state(_empty_state())
@@ -401,16 +397,6 @@ class FileRepository:
             proposal_path.unlink()
         return RejectResult(proposal_id=proposal_id, review_reason=review_reason)
 
-    def persist(self) -> PersistResult:
-        persisted_proposals = self._persist_files(
-            source_root=self.work_proposals_root,
-            target_root=self.persisted_proposals_root,
-        )
-        return PersistResult(
-            persisted_validations=0,
-            persisted_proposals=persisted_proposals,
-        )
-
     def _load_state(self) -> dict[str, Any]:
         if not self.state_path.is_file():
             return _empty_state()
@@ -510,22 +496,6 @@ class FileRepository:
             raise EntityNotFoundError(f"ambiguous spec reference: {spec_ref}")
         raise EntityNotFoundError(f"spec not found: {spec_ref}")
 
-    def _persist_files(self, source_root: Path, target_root: Path) -> int:
-        if not source_root.is_dir():
-            return 0
-        persisted = 0
-        for path in sorted(source_root.rglob("*.json")):
-            relative_path = path.relative_to(source_root)
-            target_path = target_root / relative_path
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            if target_path.exists():
-                path.unlink()
-                continue
-            path.replace(target_path)
-            persisted += 1
-        self._prune_empty_directories(source_root)
-        return persisted
-
     def _load_json_file(self, path: Path) -> dict[str, Any]:
         try:
             raw_payload = json.loads(path.read_text(encoding="utf-8"))
@@ -544,17 +514,6 @@ class FileRepository:
             elif child.is_dir():
                 child.rmdir()
         path.rmdir()
-
-    def _prune_empty_directories(self, root: Path) -> None:
-        if not root.exists():
-            return
-        for path in sorted(root.rglob("*"), reverse=True):
-            if path.is_dir():
-                try:
-                    path.rmdir()
-                except OSError:
-                    continue
-
 
 def _empty_state() -> dict[str, Any]:
     return {

@@ -12,7 +12,6 @@ from sgm.application.validation_service import ValidationService
 from sgm.domain.models import (
     ApprovalResult,
     InitResult,
-    PersistResult,
     ProposalListResult,
     ProposalStatus,
     ProposeResult,
@@ -74,9 +73,6 @@ class SgmService:
 
     def proposals_reject(self, proposal_id: str, review_reason: str | None) -> RejectResult:
         return self.graph_repository.reject_proposal(proposal_id, review_reason)
-
-    def persist(self) -> PersistResult:
-        return self.graph_repository.persist()
 
     def init(self) -> InitResult:
         return InitService(filesystem=self.filesystem).init()

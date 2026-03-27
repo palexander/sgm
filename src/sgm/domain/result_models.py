@@ -24,12 +24,6 @@ class SyncSpecResult:
 
 
 @dataclass(frozen=True, slots=True)
-class PersistResult:
-    persisted_validations: int
-    persisted_proposals: int
-
-
-@dataclass(frozen=True, slots=True)
 class InitOffer:
     target: str
     message: str

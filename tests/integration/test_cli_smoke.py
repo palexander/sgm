@@ -18,7 +18,6 @@ def test_cli_spec_first_flow(
     assert "context" in no_args_result.stdout
     assert "validate" in no_args_result.stdout
     assert "propose" in no_args_result.stdout
-    assert "persist" in no_args_result.stdout
     assert "init" in no_args_result.stdout
     assert "proposals" in no_args_result.stdout
     assert "sync" in no_args_result.stdout
@@ -183,18 +182,10 @@ def test_cli_spec_first_flow(
     assert validate_after_approve_force.returncode == 0
     assert "[FOCUS-WARN]" not in validate_after_approve_force.stdout
 
-    persist_proposal_result = run_cli(
-        sgm_executable,
-        sample_repo.root,
-        "persist",
-    )
-    assert persist_proposal_result.returncode == 0
-    assert "persisted 0 proposals" in persist_proposal_result.stdout
     assert (
         sample_repo.root / ".sgm" / "persisted" / "proposals" / f"{proposal_id}.json"
     ).is_file()
     assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
-    assert not tuple((sample_repo.root / ".sgm" / "persisted" / "validations").rglob("*.json"))
 
     subprocess.run(["git", "add", "."], cwd=sample_repo.root, check=True)
     subprocess.run(["git", "commit", "-qm", "governed changes"], cwd=sample_repo.root, check=True)
@@ -297,15 +288,7 @@ def test_cli_spec_first_flow(
     assert "[DELTA-SUMMARY]" in context_with_cleanup.stdout
     assert "[CLEANUP] This spec removed behavior." in context_with_cleanup.stdout
 
-    persist_validation_result = run_cli(
-        sgm_executable,
-        sample_repo.root,
-        "persist",
-    )
-    assert persist_validation_result.returncode == 0
-    assert "persisted 0 proposals" in persist_validation_result.stdout
     assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
-    assert not tuple((sample_repo.root / ".sgm" / "persisted" / "validations").rglob("*.json"))
 
 
 def test_validate_no_record_leaves_recorded_state_unchanged(

@@ -21,7 +21,6 @@ from sgm.domain.proposal_models import (
 from sgm.domain.result_models import (
     InitOffer,
     InitResult,
-    PersistResult,
     SyncDecisionResult,
     SyncFilesResult,
     SyncSpecResult,
@@ -47,7 +46,6 @@ __all__ = [
     "GoverningSpec",
     "InitOffer",
     "InitResult",
-    "PersistResult",
     "Proposal",
     "ProposalListResult",
     "ProposalStatus",
