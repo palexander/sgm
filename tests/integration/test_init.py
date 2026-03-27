@@ -35,7 +35,6 @@ def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Pat
     assert "__pycache__/" in gitignore_text
     assert "*.pyc" in gitignore_text
     assert ".sgm/work/" in gitignore_text
-    assert ".sgm/persisted/validations/" in gitignore_text
     assert "sgm-state/" in gitignore_text
     agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     assert (
@@ -127,7 +126,6 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
     assert "__pycache__/" in gitignore_text
     assert "*.pyc" in gitignore_text
     assert ".sgm/work/" in gitignore_text
-    assert ".sgm/persisted/validations/" in gitignore_text
     assert "sgm-state/" in gitignore_text
     agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     assert agents_text.count("Use `sgm` when working in governed areas.") == 1

@@ -34,7 +34,7 @@ class InitService:
 
         gitignore_changed = self._ensure_block(
             path=".gitignore",
-            block="__pycache__/\n*.pyc\n.sgm/work/\n.sgm/persisted/validations/\nsgm-state/\n",
+            block="__pycache__/\n*.pyc\n.sgm/work/\nsgm-state/\n",
             create_if_missing=True,
             heading=None,
         )
@@ -74,7 +74,6 @@ class InitService:
             r"(?:- Prefer modules that align with a single spec concern so "
             r"per-spec work and commits stay coherent\.\n)?"
             r"(?:- Proposal records are durable immediately in `\.sgm/persisted/proposals/`\.\n)?"
-            r"(?:- Before commit or handoff: `(?:uv run )?sgm persist`\n)?"
             r"- Before edits: `(?:uv run )?sgm context <spec-file-or-id>`\n"
             r"- After edits: `(?:uv run )?sgm validate(?: <spec-file-or-id>)?`\n"
             r"- Dry run only: `(?:uv run )?sgm validate(?: <spec-file-or-id>)? --no-record`\n"

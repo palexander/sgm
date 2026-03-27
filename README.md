@@ -79,9 +79,8 @@ SGM separates durable repo artifacts from operational runtime state.
 
 - Check into Git: `specs/`, `decisions/`, and other reviewable governance files.
 - Keep out of Git: `.sgm/work/` caches, refresh indexes, locks, and validation
-  records, plus `.sgm/persisted/validations/`.
+  records.
 - Proposal records are durable immediately in `.sgm/persisted/proposals/` when
   you create, approve, or reject them.
 - Keep proposals as the collaborative review record; keep routine validation
   runs in working state rather than promoting every run into Git.
-- `sgm persist` remains available as a maintenance command, not part of the normal workflow.

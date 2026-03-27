@@ -11,7 +11,7 @@ text: |
   3. When implementing a spec, the main agent orchestrates and hands implementation work to a sub-agent.
   4. Implementation should prefer modules that align with a single spec concern so per-spec work and commits stay coherent.
   5. `sgm sync` remains a debug and rebuild tool, not a normal prerequisite.
-  6. Repo guidance should not tell humans or agents to run `sgm persist` as part of the normal loop when proposal state is already durable.
+  6. Repo guidance should not tell humans or agents to add a separate persistence step to the normal loop when proposal state is already durable.
   7. This spec naturally splashes into the CLI/help surface, orchestration guidance, and docs/tests that explain the shared command model.
 
 governs:
