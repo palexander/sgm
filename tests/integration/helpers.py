@@ -16,6 +16,7 @@ class CliResult:
 class SampleRepo:
     root: Path
     spec_path: Path
+    middleware_spec_path: Path
 
 
 def create_sample_repo(tmp_path: Path) -> SampleRepo:
@@ -43,6 +44,8 @@ def create_sample_repo(tmp_path: Path) -> SampleRepo:
     )
     spec_path = repo_root / "specs" / "rpc-service-pattern.sgm.yaml"
     _write(spec_path, _spec_yaml(version=1))
+    middleware_spec_path = repo_root / "specs" / "middleware-policy.sgm.yaml"
+    _write(middleware_spec_path, _middleware_spec_yaml())
     _write(repo_root / "decisions" / "move-validation-boundary.yaml", _decision_yaml())
 
     subprocess.run(["git", "init", "-q"], cwd=repo_root, check=True)
@@ -58,7 +61,11 @@ def create_sample_repo(tmp_path: Path) -> SampleRepo:
     )
     subprocess.run(["git", "add", "."], cwd=repo_root, check=True)
     subprocess.run(["git", "commit", "-qm", "baseline"], cwd=repo_root, check=True)
-    return SampleRepo(root=repo_root, spec_path=spec_path)
+    return SampleRepo(
+        root=repo_root,
+        spec_path=spec_path,
+        middleware_spec_path=middleware_spec_path,
+    )
 
 
 def bump_spec_version(spec_path: Path, version: int = 2) -> None:
@@ -132,5 +139,23 @@ def _decision_yaml() -> str:
             "  middleware and adjacent utilities are the active focus.",
             "touches:",
             '  - selector: "src/middleware/**"',
+        ]
+    ) + "\n"
+
+
+def _middleware_spec_yaml() -> str:
+    return "\n".join(
+        [
+            "id: spec-002",
+            'title: "Middleware Policy"',
+            "version: 1",
+            "status: active",
+            "author: paul",
+            "text: |",
+            "  Middleware work is governed separately so focus drift is visible when",
+            "  service work continues while middleware remains unfinished.",
+            "governs:",
+            '  - selector: "src/middleware/**"',
+            "    priority: 1",
         ]
     ) + "\n"

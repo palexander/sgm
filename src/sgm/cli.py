@@ -68,12 +68,19 @@ def context(
         str,
         typer.Argument(help="Spec id, repo-relative spec path, or unique spec filename."),
     ],
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="Continue without focus warnings about unfinished work under other specs.",
+        ),
+    ] = False,
 ) -> None:
-    _run_command(lambda service: _context(service, spec))
+    _run_command(lambda service: _context(service, spec, force))
 
 
-def _context(service: SgmService, spec: str) -> ExitCode:
-    response = service.context(spec)
+def _context(service: SgmService, spec: str, force: bool) -> ExitCode:
+    response = service.context(spec, force=force)
     typer.echo(render_context(response))
     return 0
 
@@ -93,16 +100,23 @@ def validate(
             help="Record validation state by default; use --no-record for a dry run.",
         ),
     ] = True,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="Continue without focus warnings about unfinished work under other specs.",
+        ),
+    ] = False,
 ) -> None:
-    _run_command(lambda service: _validate(service, spec, record))
+    _run_command(lambda service: _validate(service, spec, record, force))
 
 
-def _validate(service: SgmService, spec: str | None, record: bool) -> ExitCode:
-    suite = service.validate(spec, record)
+def _validate(service: SgmService, spec: str | None, record: bool, force: bool) -> ExitCode:
+    suite = service.validate(spec, record, force=force)
     typer.echo(render_validation(suite=suite, recorded=record))
     if any(report.error_files for report in suite.reports):
         return 2
-    if any(report.warning_files for report in suite.reports):
+    if any(report.warning_files or report.focus_warning is not None for report in suite.reports):
         return 1
     return 0
 

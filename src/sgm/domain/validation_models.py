@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sgm.domain.context_models import FocusWarning
 from sgm.domain.proposal_models import Proposal
 from sgm.domain.spec_models import GoverningSpec
 
@@ -19,6 +20,7 @@ class ValidationReport:
     governed_files: tuple[str, ...]
     warning_files: tuple[ValidationWarning, ...]
     error_files: tuple[str, ...]
+    focus_warning: FocusWarning | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -26,6 +26,7 @@ class ValidationService:
         self,
         spec_ref: str | None,
         record: bool,
+        force: bool = False,
     ) -> ValidationSuiteReport:
         changed_files: tuple[str, ...] = self.system.changed_files(self.repo_context.root)
         spec_refs: tuple[str, ...] = (
@@ -36,6 +37,7 @@ class ValidationService:
                 spec_ref=current_spec_ref,
                 changed_files=changed_files,
                 record=record,
+                force=force if spec_ref is not None else False,
             )
             for current_spec_ref in spec_refs
         )
@@ -46,8 +48,9 @@ class ValidationService:
         spec_ref: str,
         changed_files: tuple[str, ...],
         record: bool,
+        force: bool,
     ) -> ValidationReport:
-        context_response: SpecContextResponse = self.context_service.context(spec_ref)
+        context_response: SpecContextResponse = self.context_service.context(spec_ref, force=force)
         allowed_files: set[str] = set(context_response.governed_files)
         allowed_files.add(context_response.spec.source_path)
         pending_by_path: dict[str, ValidationWarning] = {
@@ -82,4 +85,5 @@ class ValidationService:
             governed_files=context_response.governed_files,
             warning_files=tuple(warning_files),
             error_files=tuple(error_files),
+            focus_warning=context_response.focus_warning,
         )

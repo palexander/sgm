@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from sgm.domain.models import GoverningSpec, RelatedDecision, SpecContextResponse
+from sgm.domain.models import FocusWarning, GoverningSpec, RelatedDecision, SpecContextResponse
 from sgm.domain.render_shared import render_proposal, render_spec_delta
 
 
 def render_context(response: SpecContextResponse) -> str:
     lines: list[str] = ["[SPEC] 1 governing"]
     lines.extend(_render_governing_spec(spec=response.spec))
+
+    if response.focus_warning is not None:
+        lines.append("")
+        lines.extend(_render_focus_warning(response.focus_warning))
 
     if response.governed_files:
         lines.append("")
@@ -47,4 +51,20 @@ def _render_related_decision(decision: RelatedDecision) -> list[str]:
         lines.append(f"  decision: {text_line}")
     for text_line in decision.consequences.strip().splitlines():
         lines.append(f"  consequences: {text_line}")
+    return lines
+
+
+def _render_focus_warning(focus_warning: FocusWarning) -> list[str]:
+    lines: list[str] = [
+        (
+            "[FOCUS-WARN] "
+            f"unfinished governed work exists under {len(focus_warning.conflicts)} "
+            "other spec(s)"
+        )
+    ]
+    for conflict in focus_warning.conflicts:
+        lines.append(f"{conflict.spec_id} {conflict.source_path}")
+        for path in conflict.changed_files:
+            lines.append(f"  pending: {path}")
+    lines.append("Use --force to continue anyway.")
     return lines

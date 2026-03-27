@@ -46,15 +46,16 @@ class SgmService:
     def sync_decision(self, yaml_path: str) -> SyncDecisionResult:
         return self._refresh_service().sync_decision(yaml_path)
 
-    def context(self, spec_ref: str) -> SpecContextResponse:
-        return self._context_service().context(spec_ref)
+    def context(self, spec_ref: str, force: bool = False) -> SpecContextResponse:
+        return self._context_service().context(spec_ref, force=force)
 
     def validate(
         self,
         spec_ref: str | None,
         record: bool,
+        force: bool = False,
     ) -> ValidationSuiteReport:
-        return self._validation_service().validate(spec_ref, record)
+        return self._validation_service().validate(spec_ref, record, force=force)
 
     def propose(self, spec_id: str, raw_path: str, reason: str) -> ProposeResult:
         path: str = to_repo_relative_posix(self.repo_context.root, raw_path)
@@ -88,7 +89,11 @@ class SgmService:
         )
 
     def _context_service(self) -> ContextService:
-        return ContextService(graph_repository=self.graph_repository)
+        return ContextService(
+            repo_context=self.repo_context,
+            graph_repository=self.graph_repository,
+            system=self.system,
+        )
 
     def _validation_service(self) -> ValidationService:
         return ValidationService(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sgm.domain.context_models import SpecContextResponse
+from sgm.domain.context_models import FocusConflict, FocusWarning, SpecContextResponse
 from sgm.domain.core_models import (
     CodeNode,
     CodeNodeKind,
@@ -41,6 +41,8 @@ __all__ = [
     "DecisionSelector",
     "DecisionStatus",
     "ExitCode",
+    "FocusConflict",
+    "FocusWarning",
     "GovernanceSelector",
     "GoverningSpec",
     "InitOffer",

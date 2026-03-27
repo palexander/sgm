@@ -48,7 +48,7 @@ def test_cli_spec_first_flow(
         "--no-record",
     )
     assert validate_clean.returncode == 0
-    assert "[PASS] no changed files for spec-001" in validate_clean.stdout
+    assert "[VALIDATE] 2 spec(s): 2 pass, 0 warn, 0 fail" in validate_clean.stdout
 
     discharge_path = sample_repo.root / "src" / "services" / "discharge.ts"
     discharge_path.write_text(
@@ -60,6 +60,7 @@ def test_cli_spec_first_flow(
         sgm_executable,
         sample_repo.root,
         "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
         "--no-record",
     )
     assert validate_pass.returncode == 0
@@ -70,10 +71,12 @@ def test_cli_spec_first_flow(
         sgm_executable,
         sample_repo.root,
         "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
     )
     assert validate_record.returncode == 0
-    assert "[PASS] all 1 changed file(s) stayed within spec-001 (recorded)" in (
-        validate_record.stdout
+    assert (
+        "[PASS] all 1 changed file(s) stayed within spec-001 (recorded)"
+        in validate_record.stdout
     )
     assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
 
@@ -87,6 +90,7 @@ def test_cli_spec_first_flow(
         sgm_executable,
         sample_repo.root,
         "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
         "--no-record",
     )
     assert validate_fail.returncode == 2
@@ -115,11 +119,13 @@ def test_cli_spec_first_flow(
         sgm_executable,
         sample_repo.root,
         "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
         "--no-record",
     )
     assert validate_warn.returncode == 1
     assert "[WARN] 1 changed file(s) pending governance for spec-001" in validate_warn.stdout
     assert proposal_id in validate_warn.stdout
+    assert "[FOCUS-WARN]" in validate_warn.stdout
 
     approve_result = run_cli(
         sgm_executable,
@@ -140,15 +146,42 @@ def test_cli_spec_first_flow(
     assert governed_context.returncode == 0
     assert "[FILES] 4 governed" in governed_context.stdout
     assert "src/middleware/auth.ts" in governed_context.stdout
+    assert "[FOCUS-WARN]" in governed_context.stdout
+
+    governed_context_force = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "context",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--force",
+    )
+    assert governed_context_force.returncode == 0
+    assert "[FOCUS-WARN]" not in governed_context_force.stdout
 
     validate_after_approve = run_cli(
         sgm_executable,
         sample_repo.root,
         "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
         "--no-record",
     )
-    assert validate_after_approve.returncode == 0
-    assert "[PASS] all 2 changed file(s) stayed within spec-001" in validate_after_approve.stdout
+    assert validate_after_approve.returncode == 1
+    assert (
+        "[WARN] unfinished governed work exists under other spec(s) while targeting spec-001"
+        in validate_after_approve.stdout
+    )
+    assert "[FOCUS-WARN]" in validate_after_approve.stdout
+
+    validate_after_approve_force = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--no-record",
+        "--force",
+    )
+    assert validate_after_approve_force.returncode == 0
+    assert "[FOCUS-WARN]" not in validate_after_approve_force.stdout
 
     persist_proposal_result = run_cli(
         sgm_executable,
@@ -186,6 +219,7 @@ def test_cli_spec_first_flow(
         sgm_executable,
         sample_repo.root,
         "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
         "--no-record",
     )
     assert validate_with_delta.returncode == 0
@@ -268,3 +302,86 @@ def test_validate_no_record_leaves_recorded_state_unchanged(
         "specs/rpc-service-pattern.sgm.yaml",
     )
     assert "[FILES] 3 governed" in context_result.stdout
+
+
+def test_spec_targeted_commands_warn_about_other_unfinished_spec_work(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    middleware_spec_path = sample_repo.middleware_spec_path
+    middleware_spec_path.write_text(
+        "\n".join(
+            [
+                "id: spec-002",
+                'title: "Middleware Pattern"',
+                "version: 1",
+                "status: active",
+                "author: paul",
+                "text: |",
+                "  Middleware changes should stay within middleware files.",
+                "governs:",
+                '  - selector: "src/middleware/**"',
+                "    priority: 1",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "."], cwd=sample_repo.root, check=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "add middleware spec"],
+        cwd=sample_repo.root,
+        check=True,
+    )
+
+    auth_path = sample_repo.root / "src" / "middleware" / "auth.ts"
+    auth_path.write_text(
+        "export const auth = (): string => 'reviewed';\n",
+        encoding="utf-8",
+    )
+
+    context_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "context",
+        "specs/rpc-service-pattern.sgm.yaml",
+    )
+    assert context_result.returncode == 0
+    assert "[FOCUS-WARN]" in context_result.stdout
+    assert "spec-002 specs/middleware-policy.sgm.yaml" in context_result.stdout
+    assert "pending: src/middleware/auth.ts" in context_result.stdout
+    assert "Use --force to continue anyway." in context_result.stdout
+
+    forced_context = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "context",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--force",
+    )
+    assert forced_context.returncode == 0
+    assert "[FOCUS-WARN]" not in forced_context.stdout
+
+    validate_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--no-record",
+    )
+    assert validate_result.returncode == 2
+    assert "[FOCUS-WARN]" in validate_result.stdout
+    assert "spec-002 specs/middleware-policy.sgm.yaml" in validate_result.stdout
+    assert "src/middleware/auth.ts" in validate_result.stdout
+
+    forced_validate = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--no-record",
+        "--force",
+    )
+    assert forced_validate.returncode == 2
+    assert "[FOCUS-WARN]" not in forced_validate.stdout
