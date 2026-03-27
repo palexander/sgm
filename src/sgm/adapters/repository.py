@@ -350,7 +350,7 @@ class FileRepository:
             "reviewed_at": None,
             "review_reason": None,
         }
-        self._write_json_file(self.work_proposals_root / f"{proposal_id}.json", payload)
+        self._write_json_file(self.persisted_proposals_root / f"{proposal_id}.json", payload)
         return ProposeResult(
             created=True,
             proposal_id=proposal_id,
@@ -379,7 +379,10 @@ class FileRepository:
             raise EntityNotFoundError(f"spec not found: {spec_id}")
         proposal["status"] = "approved"
         proposal["reviewed_at"] = datetime.now().isoformat(timespec="seconds")
-        self._write_json_file(proposal_path, proposal)
+        persisted_path = self.persisted_proposals_root / f"{proposal_id}.json"
+        self._write_json_file(persisted_path, proposal)
+        if proposal_path != persisted_path and proposal_path.exists():
+            proposal_path.unlink()
         return ApprovalResult(proposal_id=proposal_id, spec_id=spec_id, path=path)
 
     def reject_proposal(self, proposal_id: str, review_reason: str | None) -> RejectResult:
@@ -389,7 +392,10 @@ class FileRepository:
         proposal["status"] = "rejected"
         proposal["reviewed_at"] = datetime.now().isoformat(timespec="seconds")
         proposal["review_reason"] = review_reason
-        self._write_json_file(proposal_path, proposal)
+        persisted_path = self.persisted_proposals_root / f"{proposal_id}.json"
+        self._write_json_file(persisted_path, proposal)
+        if proposal_path != persisted_path and proposal_path.exists():
+            proposal_path.unlink()
         return RejectResult(proposal_id=proposal_id, review_reason=review_reason)
 
     def persist(self) -> PersistResult:

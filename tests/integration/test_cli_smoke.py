@@ -105,8 +105,11 @@ def test_cli_spec_first_flow(
     assert "[PROPOSED] prop-" in propose_result.stdout
     proposal_id = propose_result.stdout.splitlines()[0].split()[1]
     assert (
-        sample_repo.root / ".sgm" / "work" / "proposals" / f"{proposal_id}.json"
+        sample_repo.root / ".sgm" / "persisted" / "proposals" / f"{proposal_id}.json"
     ).is_file()
+    assert not (
+        sample_repo.root / ".sgm" / "work" / "proposals" / f"{proposal_id}.json"
+    ).exists()
 
     validate_warn = run_cli(
         sgm_executable,
@@ -153,13 +156,10 @@ def test_cli_spec_first_flow(
         "persist",
     )
     assert persist_proposal_result.returncode == 0
-    assert "persisted 1 proposals" in persist_proposal_result.stdout
+    assert "persisted 0 proposals" in persist_proposal_result.stdout
     assert (
         sample_repo.root / ".sgm" / "persisted" / "proposals" / f"{proposal_id}.json"
     ).is_file()
-    assert not (
-        sample_repo.root / ".sgm" / "work" / "proposals" / f"{proposal_id}.json"
-    ).exists()
     assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
     assert not tuple((sample_repo.root / ".sgm" / "persisted" / "validations").rglob("*.json"))
 

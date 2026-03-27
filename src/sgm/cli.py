@@ -121,7 +121,7 @@ def _propose(service: SgmService, spec_id: str, path: str, reason: str) -> ExitC
     return 0
 
 
-@app.command(help="Persist durable proposal records before commit or handoff.")
+@app.command(help="Maintenance/debug command for legacy proposal records.")
 def persist() -> None:
     _run_command(_persist, auto_refresh=False)
 

@@ -8,12 +8,13 @@ text: |
   SGM should persist collaboration state in a Git-friendly way:
   1. Checked-in artifacts are durable, reviewable sources of truth such as specs, decisions, and other per-item governance files.
   2. High-churn runtime state such as caches, indexes, locks, and per-run records stays out of Git in local `.sgm/work/` storage.
-  3. Durable proposal records intended to survive code review move into `.sgm/persisted/proposals/` through an explicit persist step rather than being written into durable storage on every run.
+  3. Durable proposal records intended to survive code review are written directly into `.sgm/persisted/proposals/` when proposal state changes, rather than waiting for a separate persist step.
   4. Validation runs remain working-state records under `.sgm/work/validations/` and should not be promoted into durable Git-facing storage by default.
   5. Shared history should prefer append-only or file-per-item artifacts over a single mutable state file.
   6. Derived summaries may be cached locally, but they must remain reconstructible from checked-in artifacts plus persisted proposal records plus current repo state.
   7. Multi-user use should avoid commit collisions by separating declarative repo state from operational runtime state.
-  8. This spec naturally splashes into the persist command, the repository and filesystem storage code, and the smoke/error tests that exercise the state lifecycle.
+  8. `sgm persist` may remain as a debug or maintenance command, but normal proposal creation and review should not rely on it.
+  9. This spec naturally splashes into the proposal and persist commands, the repository and filesystem storage code, and the smoke/error tests that exercise the state lifecycle.
 
 governs:
   - selector: "specs/persistence-artifacts.sgm.yaml"

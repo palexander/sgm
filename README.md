@@ -25,7 +25,6 @@ uv run sgm init
 uv run sgm context specs/rpc-service-pattern.sgm.yaml
 uv run sgm validate
 uv run sgm validate --no-record
-uv run sgm persist
 ```
 
 `sgm` automatically refreshes file and spec state from disk on normal commands.
@@ -56,16 +55,13 @@ When implementing a governed spec, the intended pattern is:
 - a sub-agent performs the implementation work
 - modules should align to a single spec concern when practical so per-spec work and commits stay coherent
 
-## Modularization Plan
+## Human Workflow
 
-The current code still crosses spec boundaries too often. The next structural pass
-should reduce that overlap.
-
-- Split [services.py](/Users/palexander/Developer/sgm/src/sgm/application/services.py) into focused application services such as context, validate, init, persist, and proposals.
-- Split [models.py](/Users/palexander/Developer/sgm/src/sgm/domain/models.py) into smaller domain model modules grouped by spec-facing concern.
-- Split [renderers.py](/Users/palexander/Developer/sgm/src/sgm/domain/renderers.py) into command-specific renderers so init, context, validate, and persist output evolve independently.
-- Keep [cli.py](/Users/palexander/Developer/sgm/src/sgm/cli.py) thin and route command behavior into focused modules rather than growing one shared switchboard.
-- Use spec splash radius as the default module boundary: if a change repeatedly spans multiple specs, prefer introducing a clearer module seam instead of broadening governance.
+- Write or update a spec under `specs/`.
+- Define its initial `governs` selectors.
+- Run `uv run sgm validate` to see whether the current repo state is valid across active specs, or `uv run sgm validate <spec>` for one spec.
+- Review pending governance expansions with `uv run sgm proposals list`.
+- Approve or reject proposals as part of review with `uv run sgm proposals approve <proposal-id>` or `uv run sgm proposals reject <proposal-id>`.
 
 ## Persistence Model
 
@@ -74,7 +70,8 @@ SGM separates durable repo artifacts from operational runtime state.
 - Check into Git: `specs/`, `decisions/`, and other reviewable governance files.
 - Keep out of Git: `.sgm/work/` caches, refresh indexes, locks, and validation
   records, plus `.sgm/persisted/validations/`.
-- Persist durable proposal records into `.sgm/persisted/proposals/` with
-  `uv run sgm persist` before commit or PR handoff.
+- Proposal records are durable immediately in `.sgm/persisted/proposals/` when
+  you create, approve, or reject them.
 - Keep proposals as the collaborative review record; keep routine validation
   runs in working state rather than promoting every run into Git.
+- `sgm persist` remains available as a maintenance command, not part of the normal workflow.
