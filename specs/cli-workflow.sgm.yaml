@@ -6,13 +6,17 @@ author: paul
 
 text: |
   Work on SGM should preserve the core agent workflow:
-  1. `sgm context <spec-file-or-id>` returns the governing spec text and all governed files before code is changed.
-  2. `sgm validate` validates all active specs against the current repo change set without requiring manual sync.
-  3. Spec edits are picked up from disk automatically and surfaced as focused `[SPEC-DELTA]` output.
-  4. When implementing a spec, the main agent should act as orchestrator and hand the implementation work to a sub-agent.
-  5. Implementation should prefer modules that align with a single spec concern so per-spec work and commits stay coherent.
-  6. Governance expands through explicit proposals when work reaches ungoverned files.
-  7. `sgm sync` is a debug and rebuild tool, not a normal prerequisite for agents.
+  1. The primary `sgm` command model should remain shared between humans and agents rather than splitting into separate conceptual interfaces.
+  2. Naming, defaults, and help output should become friendlier for humans without breaking the shared command model agents rely on.
+  3. `sgm context <spec-file-or-id>` returns the governing spec text and all governed files before code is changed.
+  4. `sgm validate` validates all active specs against the current repo change set without requiring manual sync.
+  5. When a spec changes on disk, `sgm context <spec-file-or-id>` should surface the governing context plus a focused `[SPEC-DELTA]` unified diff.
+  6. The agent should use that diff to focus implementation, not re-read the entire spec as if it were fresh.
+  7. Spec edits are picked up from disk automatically and surfaced as focused `[SPEC-DELTA]` output.
+  8. When implementing a spec, the main agent should act as orchestrator and hand the implementation work to a sub-agent.
+  9. Implementation should prefer modules that align with a single spec concern so per-spec work and commits stay coherent.
+  10. Governance expands through explicit proposals when work reaches ungoverned files.
+  11. `sgm sync` is a debug and rebuild tool, not a normal prerequisite for agents.
 
 governs:
   - selector: "specs/**"

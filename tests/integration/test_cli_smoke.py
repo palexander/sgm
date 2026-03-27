@@ -12,6 +12,18 @@ def test_cli_spec_first_flow(
 ) -> None:
     sample_repo = create_sample_repo(tmp_path)
 
+    no_args_result = run_cli(sgm_executable, sample_repo.root)
+    assert no_args_result.returncode == 0
+    assert "Shared SGM CLI for humans and agents." in no_args_result.stdout
+    assert "context" in no_args_result.stdout
+    assert "validate" in no_args_result.stdout
+    assert "propose" in no_args_result.stdout
+    assert "persist" in no_args_result.stdout
+    assert "init" in no_args_result.stdout
+    assert "proposals" in no_args_result.stdout
+    assert "sync" in no_args_result.stdout
+    assert "Missing command" not in no_args_result.stderr
+
     context_result = run_cli(
         sgm_executable,
         sample_repo.root,

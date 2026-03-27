@@ -35,11 +35,18 @@ from sgm.domain.renderers import (
     render_validation,
 )
 
-app = typer.Typer(help="Spec-governed graph memory CLI.")
-proposals_app = typer.Typer(help="Manage governance proposals.")
-sync_app = typer.Typer(help="Synchronize graph state from repo sources.")
+app = typer.Typer(help="Shared SGM CLI for humans and agents.")
+proposals_app = typer.Typer(help="Review and manage governance proposals.")
+sync_app = typer.Typer(help="Refresh derived graph state from repo sources.")
 app.add_typer(proposals_app, name="proposals")
 app.add_typer(sync_app, name="sync")
+
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context) -> None:
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
 
 
 def _service() -> SgmService:
@@ -55,7 +62,7 @@ def _service() -> SgmService:
     )
 
 
-@app.command()
+@app.command(help="Show governing context for a spec id or repo-relative spec path.")
 def context(
     spec: Annotated[
         str,
@@ -71,7 +78,7 @@ def _context(service: SgmService, spec: str) -> ExitCode:
     return 0
 
 
-@app.command()
+@app.command(help="Validate active specs against the current repo change set.")
 def validate(
     spec: Annotated[
         str | None,
@@ -100,7 +107,7 @@ def _validate(service: SgmService, spec: str | None, record: bool) -> ExitCode:
     return 0
 
 
-@app.command()
+@app.command(help="Propose governance for an ungoverned repo-relative path.")
 def propose(
     spec_id: Annotated[str, typer.Argument(help="Spec identifier.")],
     path: Annotated[str, typer.Argument(help="Repo-relative path to govern.")],
@@ -114,7 +121,7 @@ def _propose(service: SgmService, spec_id: str, path: str, reason: str) -> ExitC
     return 0
 
 
-@app.command()
+@app.command(help="Persist durable proposal records before commit or handoff.")
 def persist() -> None:
     _run_command(_persist, auto_refresh=False)
 
@@ -124,7 +131,7 @@ def _persist(service: SgmService) -> ExitCode:
     return 0
 
 
-@app.command()
+@app.command(help="Bootstrap SGM files and guidance in the current repo.")
 def init() -> None:
     _run_command(_init, auto_refresh=False)
 
@@ -134,7 +141,7 @@ def _init(service: SgmService) -> ExitCode:
     return 0
 
 
-@proposals_app.command("list")
+@proposals_app.command("list", help="List governance proposals.")
 def proposals_list(
     status: Annotated[
         ProposalStatus | None,
@@ -149,7 +156,7 @@ def _proposals_list(service: SgmService, status: ProposalStatus | None) -> ExitC
     return 0
 
 
-@proposals_app.command("approve")
+@proposals_app.command("approve", help="Approve a governance proposal.")
 def proposals_approve(
     proposal_id: Annotated[str, typer.Argument(help="Proposal identifier.")],
 ) -> None:
@@ -161,7 +168,7 @@ def _proposals_approve(service: SgmService, proposal_id: str) -> ExitCode:
     return 0
 
 
-@proposals_app.command("reject")
+@proposals_app.command("reject", help="Reject a governance proposal.")
 def proposals_reject(
     proposal_id: Annotated[str, typer.Argument(help="Proposal identifier.")],
     reason: Annotated[str | None, typer.Option("--reason", help="Optional review reason.")] = None,
@@ -174,7 +181,7 @@ def _proposals_reject(service: SgmService, proposal_id: str, reason: str | None)
     return 0
 
 
-@sync_app.command("files")
+@sync_app.command("files", help="Scan files and refresh code-node state.")
 def sync_files(
     path: Annotated[
         str | None,
@@ -189,7 +196,7 @@ def _sync_files(service: SgmService, path: str | None) -> ExitCode:
     return 0
 
 
-@sync_app.command("spec")
+@sync_app.command("spec", help="Ingest a spec YAML file into the derived graph.")
 def sync_spec(
     yaml_file: Annotated[str, typer.Argument(help="Spec YAML file to ingest.")],
 ) -> None:
@@ -201,7 +208,7 @@ def _sync_spec(service: SgmService, yaml_file: str) -> ExitCode:
     return 0
 
 
-@sync_app.command("decision")
+@sync_app.command("decision", help="Ingest a decision YAML file into the derived graph.")
 def sync_decision(
     yaml_file: Annotated[str, typer.Argument(help="Decision YAML file to ingest.")],
 ) -> None:
