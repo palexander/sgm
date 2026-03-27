@@ -28,8 +28,11 @@ def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Pat
     assert (repo_root / ".sgm" / "work").is_dir()
     assert (repo_root / ".sgm" / "persisted").is_dir()
     gitignore_text = (repo_root / ".gitignore").read_text(encoding="utf-8")
+    assert "__pycache__/" in gitignore_text
+    assert "*.pyc" in gitignore_text
     assert ".sgm/work/" in gitignore_text
     assert ".sgm/persisted/validations/" in gitignore_text
+    assert "sgm-state/" in gitignore_text
     agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     assert (
         "Main agent: orchestrate spec work and hand implementation to a sub-agent."
@@ -38,9 +41,12 @@ def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Pat
     assert (
         MODULARITY_GUIDANCE in agents_text
     )
+    assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`." in (
+        agents_text
+    )
     assert "sgm context <spec-file-or-id>" in agents_text
     assert "sgm validate" in agents_text
-    assert "sgm persist" in agents_text
+    assert "sgm persist" not in agents_text
 
 
 def test_init_updates_existing_claude_md(tmp_path: Path, sgm_executable: Path) -> None:
@@ -64,11 +70,17 @@ def test_init_updates_existing_claude_md(tmp_path: Path, sgm_executable: Path) -
     assert (
         MODULARITY_GUIDANCE in agents_text
     )
+    assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`." in (
+        agents_text
+    )
     assert "sgm validate" in agents_text
     claude_text = (repo_root / "CLAUDE.md").read_text(encoding="utf-8")
     assert "## SGM" in claude_text
     assert "sgm context <spec-file-or-id>" in claude_text
     assert "- `sgm validate` after edits" in claude_text
+    assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`" in (
+        claude_text
+    )
     assert "Prefer modules that align with a single spec concern when practical" in claude_text
 
 
@@ -85,10 +97,10 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
                 "Use `sgm` when working in governed areas.",
                 "",
                 f"- {MODULARITY_GUIDANCE}",
+                "- Proposal records are durable immediately in `.sgm/persisted/proposals/`.",
                 "- Before edits: `uv run sgm context <spec-file-or-id>`",
                 "- After edits: `uv run sgm validate`",
                 "- Dry run only: `uv run sgm validate --no-record`",
-                "- Before commit or handoff: `uv run sgm persist`",
                 (
                     '- If a touched file is ungoverned: `uv run sgm propose '
                     '<spec-id> <path> "<reason>"`'
@@ -104,6 +116,12 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
     assert result.returncode == 0
     assert "created: .gitignore" in result.stdout
     assert "updated: AGENTS.md" in result.stdout
+    gitignore_text = (repo_root / ".gitignore").read_text(encoding="utf-8")
+    assert "__pycache__/" in gitignore_text
+    assert "*.pyc" in gitignore_text
+    assert ".sgm/work/" in gitignore_text
+    assert ".sgm/persisted/validations/" in gitignore_text
+    assert "sgm-state/" in gitignore_text
     agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     assert agents_text.count("Use `sgm` when working in governed areas.") == 1
     assert (
@@ -113,9 +131,11 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
     assert (
         MODULARITY_GUIDANCE in agents_text
     )
+    assert "Proposal records are durable immediately" in agents_text
     assert "`sgm context <spec-file-or-id>`" in agents_text
     assert "`sgm validate`" in agents_text
     assert "`uv run sgm context <spec-file-or-id>`" not in agents_text
+    assert "`uv run sgm persist`" not in agents_text
 
 
 def test_init_rewrites_stale_claude_section(tmp_path: Path, sgm_executable: Path) -> None:
@@ -136,4 +156,7 @@ def test_init_rewrites_stale_claude_section(tmp_path: Path, sgm_executable: Path
     assert "old instructions" not in claude_text
     assert "Use `sgm` before and after governed edits:" in claude_text
     assert "- `sgm validate` after edits" in claude_text
+    assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`" in (
+        claude_text
+    )
     assert "Prefer modules that align with a single spec concern when practical" in claude_text

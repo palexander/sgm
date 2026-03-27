@@ -10,6 +10,9 @@ AGENTS_GUIDANCE_LINE = (
     "Prefer modules that align with a single spec concern so "
     "per-spec work and commits stay coherent."
 )
+PROPOSAL_GUIDANCE_LINE = (
+    "Proposal records are durable immediately in `.sgm/persisted/proposals/`."
+)
 
 
 @dataclass(slots=True)
@@ -27,7 +30,7 @@ class InitService:
 
         gitignore_changed = self._ensure_block(
             path=".gitignore",
-            block=".sgm/work/\n.sgm/persisted/validations/\n",
+            block="__pycache__/\n*.pyc\n.sgm/work/\n.sgm/persisted/validations/\nsgm-state/\n",
             create_if_missing=True,
             heading=None,
         )
@@ -64,10 +67,11 @@ class InitService:
             r"(?:- Main agent: orchestrate spec work and hand implementation to a sub-agent\.\n)?"
             r"(?:- Prefer modules that align with a single spec concern so "
             r"per-spec work and commits stay coherent\.\n)?"
+            r"(?:- Proposal records are durable immediately in `\.sgm/persisted/proposals/`\.\n)?"
+            r"(?:- Before commit or handoff: `(?:uv run )?sgm persist`\n)?"
             r"- Before edits: `(?:uv run )?sgm context <spec-file-or-id>`\n"
             r"- After edits: `(?:uv run )?sgm validate(?: <spec-file-or-id>)?`\n"
             r"- Dry run only: `(?:uv run )?sgm validate(?: <spec-file-or-id>)? --no-record`\n"
-            r"- Before commit or handoff: `(?:uv run )?sgm persist`\n"
             r"- If a touched file is ungoverned: `(?:uv run )?sgm propose "
             r"<spec-id> <path> \"<reason>\"`\n?"
         )
@@ -95,10 +99,10 @@ class InitService:
                 "",
                 "- Main agent: orchestrate spec work and hand implementation to a sub-agent.",
                 f"- {AGENTS_GUIDANCE_LINE}",
+                f"- {PROPOSAL_GUIDANCE_LINE}",
                 "- Before edits: `sgm context <spec-file-or-id>`",
                 "- After edits: `sgm validate`",
                 "- Dry run only: `sgm validate --no-record`",
-                "- Before commit or handoff: `sgm persist`",
                 '- If a touched file is ungoverned: `sgm propose <spec-id> <path> "<reason>"`',
             ]
         )
@@ -112,8 +116,8 @@ class InitService:
                 "",
                 "- `sgm context <spec-file-or-id>` before edits",
                 "- `sgm validate` after edits",
-                "- `sgm persist` before commit or handoff",
                 "- Prefer modules that align with a single spec concern when practical",
+                "- Proposal records are durable immediately in `.sgm/persisted/proposals/`",
             ]
         )
 
