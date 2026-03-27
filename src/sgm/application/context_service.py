@@ -46,11 +46,18 @@ class ContextService:
     ) -> tuple[GoverningSpec, ...]:
         enriched_specs: list[GoverningSpec] = []
         for spec in specs:
+            fallback_diff_lines: tuple[str, ...] | None = None
+            if spec.previous_source_text is None and not spec.has_local_snapshot_history:
+                fallback_diff_lines = self.system.git_diff(
+                    self.repo_context.root,
+                    spec.source_path,
+                )
             spec_delta: SpecDelta | None = build_spec_delta(
                 spec_id=spec.id,
                 source_path=spec.source_path,
                 previous_text=spec.previous_source_text,
                 current_text=spec.source_text,
+                fallback_diff_lines=fallback_diff_lines,
             )
             enriched_specs.append(replace(spec, spec_delta=spec_delta))
         return tuple(enriched_specs)

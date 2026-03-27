@@ -8,15 +8,28 @@ text: |
   `sgm context` should help agents focus on the behavior they are changing:
   1. `sgm context <spec-file-or-id>` returns the governing spec text and all governed files before code is changed.
   2. When a spec changes on disk, `sgm context <spec-file-or-id>` should surface the governing context plus a focused `[SPEC-DELTA]` unified diff.
-  3. The agent should use that diff to focus implementation, not re-read the entire spec as if it were fresh.
-  4. Spec edits are picked up from disk automatically and surfaced as focused `[SPEC-DELTA]` output.
-  5. `sgm context` also surfaces active `[DECISIONS]` that inform the governed file set.
-  6. This spec naturally splashes into context rendering, spec delta logic, and the tests/docs that describe the context-first workflow.
+  3. If no prior local snapshot exists, `sgm context` should fall back to a `git diff` for the spec file when available.
+  4. If neither a local snapshot nor a `git diff` exists, no `[SPEC-DELTA]` is shown.
+  5. The agent should use that diff to focus implementation, not re-read the entire spec as if it were fresh.
+  6. Spec edits are picked up from disk automatically and surfaced as focused `[SPEC-DELTA]` output.
+  7. `sgm context` should add a short `[DELTA-SUMMARY]` ahead of the raw diff so agents can quickly see whether behavior was added, removed, or otherwise changed.
+  8. If the diff removes behavior, `sgm context` should emit an explicit `[CLEANUP]` nudge telling the agent to remove or isolate obsolete code, tests, and docs rather than keeping parallel implementations by default.
+  9. Discovery should be affirmative: spec files come only from `specs/**/*.sgm.yaml`, decisions only from `decisions/**/*.yaml`, and governed-file matching should use a Git-backed repo inventory rather than recursive filesystem walks of the whole repo.
+  10. `sgm context` also surfaces active `[DECISIONS]` that inform the governed file set.
+  11. This spec naturally splashes into context rendering, spec delta logic, Git-backed discovery and repo inventory, and the tests/docs that describe the context-first workflow.
 
 governs:
   - selector: "specs/context-and-delta.sgm.yaml"
     priority: 1
   - selector: "src/sgm/application/context_service.py"
+    priority: 1
+  - selector: "src/sgm/application/refresh_service.py"
+    priority: 1
+  - selector: "src/sgm/adapters/filesystem.py"
+    priority: 1
+  - selector: "src/sgm/adapters/repository.py"
+    priority: 1
+  - selector: "src/sgm/adapters/system.py"
     priority: 1
   - selector: "src/sgm/domain/context_models.py"
     priority: 1
@@ -25,6 +38,8 @@ governs:
   - selector: "src/sgm/domain/render_shared.py"
     priority: 1
   - selector: "src/sgm/domain/spec_deltas.py"
+    priority: 1
+  - selector: "src/sgm/domain/spec_models.py"
     priority: 1
   - selector: "src/sgm/application/services.py"
     priority: 1
@@ -35,4 +50,10 @@ governs:
   - selector: "AGENTS.md"
     priority: 2
   - selector: "tests/integration/test_cli_smoke.py"
+    priority: 2
+  - selector: "tests/unit/test_filesystem.py"
+    priority: 2
+  - selector: "tests/unit/test_spec_deltas.py"
+    priority: 2
+  - selector: "tests/unit/test_system.py"
     priority: 2

@@ -6,6 +6,7 @@ from sgm.adapters.decision_loader import load_decision_document
 from sgm.adapters.filesystem import FileSystemAdapter
 from sgm.adapters.repository import GraphRepository
 from sgm.adapters.spec_loader import load_spec_document
+from sgm.adapters.system import SystemAdapter
 from sgm.domain.models import RepoContext, SyncDecisionResult, SyncFilesResult, SyncSpecResult
 from sgm.domain.paths import normalize_scan_root, to_repo_relative_posix
 
@@ -15,9 +16,14 @@ class RefreshService:
     repo_context: RepoContext
     graph_repository: GraphRepository
     filesystem: FileSystemAdapter
+    system: SystemAdapter
 
     def refresh(self) -> None:
-        self.graph_repository.sync_files(".", self.filesystem.scan("."))
+        repo_inventory = self.system.repo_file_inventory(self.repo_context.root)
+        self.graph_repository.sync_files(
+            ".",
+            self.filesystem.inventory_nodes(repo_inventory),
+        )
         spec_paths: tuple[str, ...] = self.filesystem.list_spec_files()
         for spec_path in spec_paths:
             spec = load_spec_document(

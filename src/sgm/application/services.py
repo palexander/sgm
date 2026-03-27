@@ -86,6 +86,7 @@ class SgmService:
             repo_context=self.repo_context,
             graph_repository=self.graph_repository,
             filesystem=self.filesystem,
+            system=self.system,
         )
 
     def _context_service(self) -> ContextService:

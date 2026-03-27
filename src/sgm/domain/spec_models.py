@@ -30,6 +30,8 @@ class SpecDelta:
     source_path: str
     diff_lines: tuple[str, ...]
     current_exists: bool
+    summary_lines: tuple[str, ...]
+    cleanup_required: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +40,7 @@ class GoverningSpec:
     source_path: str
     source_text: str
     previous_source_text: str | None
+    has_local_snapshot_history: bool
     title: str
     version: int
     text: str

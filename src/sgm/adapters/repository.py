@@ -120,6 +120,7 @@ class FileRepository:
         state = self._load_state()
         existing_spec = cast(dict[str, Any] | None, state["specs"].get(spec.id))
         previous_source_text: str | None = None
+        has_local_snapshot_history = existing_spec is not None
         if existing_spec is not None:
             existing_source_text = cast(str, existing_spec["source_text"])
             if existing_source_text != spec.source_text:
@@ -159,6 +160,7 @@ class FileRepository:
             "source_path": spec.source_path,
             "source_text": spec.source_text,
             "previous_source_text": previous_source_text,
+            "has_local_snapshot_history": has_local_snapshot_history,
             "title": spec.title,
             "version": spec.version,
             "text": spec.text,
@@ -239,6 +241,7 @@ class FileRepository:
             source_path=cast(str, spec_data["source_path"]),
             source_text=cast(str, spec_data["source_text"]),
             previous_source_text=cast(str | None, spec_data.get("previous_source_text")),
+            has_local_snapshot_history=bool(spec_data.get("has_local_snapshot_history", False)),
             title=cast(str, spec_data["title"]),
             version=int(spec_data["version"]),
             text=cast(str, spec_data["text"]),

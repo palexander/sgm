@@ -209,6 +209,8 @@ def test_cli_spec_first_flow(
     assert "[SPEC-DELTA] spec-001 specs/rpc-service-pattern.sgm.yaml changed since last ingest" in (
         context_with_delta.stdout
     )
+    assert "[DELTA-SUMMARY]" in context_with_delta.stdout
+    assert "[CLEANUP]" not in context_with_delta.stdout
     assert "--- a/specs/rpc-service-pattern.sgm.yaml" in context_with_delta.stdout
     assert "+++ b/specs/rpc-service-pattern.sgm.yaml" in context_with_delta.stdout
     assert "-version: 1" in context_with_delta.stdout
@@ -227,6 +229,8 @@ def test_cli_spec_first_flow(
     assert "[SPEC-DELTA] spec-001 specs/rpc-service-pattern.sgm.yaml changed since last ingest" in (
         validate_with_delta.stdout
     )
+    assert "[DELTA-SUMMARY]" in validate_with_delta.stdout
+    assert "[CLEANUP]" not in validate_with_delta.stdout
     assert "-version: 2" in validate_with_delta.stdout
     assert "+version: 3" in validate_with_delta.stdout
 
@@ -268,6 +272,31 @@ def test_cli_spec_first_flow(
     )
     assert "[SPEC-DELTA]" not in context_after_bump.stdout
 
+    spec_lines = sample_repo.spec_path.read_text(encoding="utf-8").splitlines()
+    sample_repo.spec_path.write_text(
+        "\n".join(
+            line
+            for line in spec_lines
+            if line
+            != (
+                "  3. Files outside the governed scope require an explicit "
+                "proposal before they become in-scope"
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    context_with_cleanup = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "context",
+        "specs/rpc-service-pattern.sgm.yaml",
+    )
+    assert context_with_cleanup.returncode == 0
+    assert "[DELTA-SUMMARY]" in context_with_cleanup.stdout
+    assert "[CLEANUP] This spec removed behavior." in context_with_cleanup.stdout
+
     persist_validation_result = run_cli(
         sgm_executable,
         sample_repo.root,
@@ -302,6 +331,32 @@ def test_validate_no_record_leaves_recorded_state_unchanged(
         "specs/rpc-service-pattern.sgm.yaml",
     )
     assert "[FILES] 3 governed" in context_result.stdout
+
+
+def test_context_uses_git_diff_when_no_local_spec_snapshot_exists(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+
+    bump_spec_version(sample_repo.spec_path)
+
+    context_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "context",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--force",
+    )
+
+    assert context_result.returncode == 0
+    assert "[SPEC-DELTA] spec-001 specs/rpc-service-pattern.sgm.yaml changed since last ingest" in (
+        context_result.stdout
+    )
+    assert "--- a/specs/rpc-service-pattern.sgm.yaml" in context_result.stdout
+    assert "+++ b/specs/rpc-service-pattern.sgm.yaml" in context_result.stdout
+    assert "-version: 1" in context_result.stdout
+    assert "+version: 2" in context_result.stdout
 
 
 def test_spec_targeted_commands_warn_about_other_unfinished_spec_work(
