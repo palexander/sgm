@@ -22,7 +22,7 @@ rm -rf .sgm/
 ```bash
 uv run sgm --help
 uv run sgm init
-uv run sgm context specs/rpc-service-pattern.sgm.yaml
+uv run sgm context specs/context-and-delta.sgm.yaml
 uv run sgm validate
 uv run sgm validate --no-record
 ```
@@ -36,6 +36,15 @@ ensures `.gitignore` excludes working state and persisted validation records, ad
 and updates `CLAUDE.md` when it already exists.
 
 Repo spec files should use the naming convention `specs/{spec_name}.sgm.yaml`.
+
+The old umbrella workflow spec has been retired as an enforcing spec. The
+behavior is now split across narrower specs:
+- `specs/cli-command-model.sgm.yaml`
+- `specs/context-and-delta.sgm.yaml`
+- `specs/validation-and-focus.sgm.yaml`
+- `specs/persistence-artifacts.sgm.yaml`
+- `specs/init-bootstrap.sgm.yaml`
+- `specs/spec-document-format.sgm.yaml`
 
 `sgm context <spec-file-or-id>` returns the full governing spec context plus all
 files governed by that spec.
@@ -57,8 +66,9 @@ When implementing a governed spec, the intended pattern is:
 
 ## Human Workflow
 
-- Write or update a spec under `specs/`.
-- Define its initial `governs` selectors.
+- Write or update the spec under `specs/` that matches the behavior you are changing.
+- Use the narrower behavior specs rather than the retired umbrella workflow spec.
+- Define the spec's initial `governs` selectors.
 - Run `uv run sgm validate` to see whether the current repo state is valid across active specs, or `uv run sgm validate <spec>` for one spec.
 - Review pending governance expansions with `uv run sgm proposals list`.
 - Approve or reject proposals as part of review with `uv run sgm proposals approve <proposal-id>` or `uv run sgm proposals reject <proposal-id>`.

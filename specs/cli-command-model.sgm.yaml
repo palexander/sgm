@@ -1,0 +1,31 @@
+id: spec-sgm-cli-command-model-001
+title: "SGM CLI Command Model"
+version: 1
+status: active
+author: paul
+
+text: |
+  The shared `sgm` command model should stay friendly to both humans and agents:
+  1. The primary `sgm` command model stays shared instead of splitting into separate conceptual interfaces.
+  2. Naming, defaults, and help output should stay human-friendly without breaking the shared model agents rely on.
+  3. When implementing a spec, the main agent orchestrates and hands implementation work to a sub-agent.
+  4. Implementation should prefer modules that align with a single spec concern so per-spec work and commits stay coherent.
+  5. `sgm sync` remains a debug and rebuild tool, not a normal prerequisite.
+  6. Repo guidance should not tell humans or agents to run `sgm persist` as part of the normal loop when proposal state is already durable.
+  7. This spec naturally splashes into the CLI/help surface, orchestration guidance, and docs/tests that explain the shared command model.
+
+governs:
+  - selector: "specs/cli-command-model.sgm.yaml"
+    priority: 1
+  - selector: "src/sgm/cli.py"
+    priority: 1
+  - selector: "src/sgm/application/services.py"
+    priority: 1
+  - selector: "src/sgm/domain/render_commands.py"
+    priority: 1
+  - selector: "README.md"
+    priority: 2
+  - selector: "AGENTS.md"
+    priority: 2
+  - selector: "tests/integration/test_cli_smoke.py"
+    priority: 2

@@ -1,32 +1,16 @@
 id: spec-sgm-cli-workflow-001
-title: "SGM CLI Workflow"
+title: "SGM Workflow Overview (Retired)"
 version: 1
-status: active
+status: deprecated
 author: paul
 
 text: |
-  Work on SGM should preserve the core agent workflow:
-  1. The primary `sgm` command model should remain shared between humans and agents rather than splitting into separate conceptual interfaces.
-  2. Naming, defaults, and help output should become friendlier for humans without breaking the shared command model agents rely on.
-  3. `sgm context <spec-file-or-id>` returns the governing spec text and all governed files before code is changed.
-  4. `sgm validate` validates all active specs against the current repo change set without requiring manual sync.
-  5. When a spec changes on disk, `sgm context <spec-file-or-id>` should surface the governing context plus a focused `[SPEC-DELTA]` unified diff.
-  6. The agent should use that diff to focus implementation, not re-read the entire spec as if it were fresh.
-  7. Spec edits are picked up from disk automatically and surfaced as focused `[SPEC-DELTA]` output.
-  8. When implementing a spec, the main agent should act as orchestrator and hand the implementation work to a sub-agent.
-  9. Implementation should prefer modules that align with a single spec concern so per-spec work and commits stay coherent.
-  10. Governance expands through explicit proposals when work reaches ungoverned files, and those proposal records should be durable immediately rather than requiring a separate persist step.
-  11. `sgm sync` is a debug and rebuild tool, not a normal prerequisite for agents.
-  12. Repo guidance should not tell humans or agents to run `sgm persist` as part of the normal loop when no collaborative state still depends on that extra step.
-
-governs:
-  - selector: "specs/**"
-    priority: 1
-  - selector: "src/sgm/**"
-    priority: 1
-  - selector: "tests/**"
-    priority: 1
-  - selector: "README.md"
-    priority: 2
-  - selector: "AGENTS.md"
-    priority: 2
+  This file is a retired overview of the old umbrella workflow spec.
+  The enforcing behavior now lives in narrower specs:
+  1. `specs/cli-command-model.sgm.yaml`
+  2. `specs/context-and-delta.sgm.yaml`
+  3. `specs/validation-and-focus.sgm.yaml`
+  4. `specs/persistence-artifacts.sgm.yaml`
+  5. `specs/init-bootstrap.sgm.yaml`
+  6. `specs/spec-document-format.sgm.yaml`
+  Use the narrower spec that matches the behavior under discussion.

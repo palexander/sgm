@@ -1,0 +1,38 @@
+id: spec-sgm-context-delta-001
+title: "SGM Context and Delta"
+version: 1
+status: active
+author: paul
+
+text: |
+  `sgm context` should help agents focus on the behavior they are changing:
+  1. `sgm context <spec-file-or-id>` returns the governing spec text and all governed files before code is changed.
+  2. When a spec changes on disk, `sgm context <spec-file-or-id>` should surface the governing context plus a focused `[SPEC-DELTA]` unified diff.
+  3. The agent should use that diff to focus implementation, not re-read the entire spec as if it were fresh.
+  4. Spec edits are picked up from disk automatically and surfaced as focused `[SPEC-DELTA]` output.
+  5. `sgm context` also surfaces active `[DECISIONS]` that inform the governed file set.
+  6. This spec naturally splashes into context rendering, spec delta logic, and the tests/docs that describe the context-first workflow.
+
+governs:
+  - selector: "specs/context-and-delta.sgm.yaml"
+    priority: 1
+  - selector: "src/sgm/application/context_service.py"
+    priority: 1
+  - selector: "src/sgm/domain/context_models.py"
+    priority: 1
+  - selector: "src/sgm/domain/render_context.py"
+    priority: 1
+  - selector: "src/sgm/domain/render_shared.py"
+    priority: 1
+  - selector: "src/sgm/domain/spec_deltas.py"
+    priority: 1
+  - selector: "src/sgm/application/services.py"
+    priority: 1
+  - selector: "src/sgm/cli.py"
+    priority: 1
+  - selector: "README.md"
+    priority: 2
+  - selector: "AGENTS.md"
+    priority: 2
+  - selector: "tests/integration/test_cli_smoke.py"
+    priority: 2

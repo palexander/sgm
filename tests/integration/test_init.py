@@ -9,6 +9,10 @@ MODULARITY_GUIDANCE = (
     "Prefer modules that align with a single spec concern so "
     "per-spec work and commits stay coherent."
 )
+SPEC_SELECTION_GUIDANCE = (
+    "Use the narrower behavior spec that matches the work: command model, "
+    "context and delta, validation and focus, persistence, init, or spec format."
+)
 
 
 def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Path) -> None:
@@ -38,6 +42,7 @@ def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Pat
         "Main agent: orchestrate spec work and hand implementation to a sub-agent."
         in agents_text
     )
+    assert SPEC_SELECTION_GUIDANCE in agents_text
     assert (
         MODULARITY_GUIDANCE in agents_text
     )
@@ -67,6 +72,7 @@ def test_init_updates_existing_claude_md(tmp_path: Path, sgm_executable: Path) -
         "Main agent: orchestrate spec work and hand implementation to a sub-agent."
         in agents_text
     )
+    assert SPEC_SELECTION_GUIDANCE in agents_text
     assert (
         MODULARITY_GUIDANCE in agents_text
     )
@@ -77,6 +83,7 @@ def test_init_updates_existing_claude_md(tmp_path: Path, sgm_executable: Path) -
     claude_text = (repo_root / "CLAUDE.md").read_text(encoding="utf-8")
     assert "## SGM" in claude_text
     assert "sgm context <spec-file-or-id>" in claude_text
+    assert "Use the narrower behavior spec that matches the work" in claude_text
     assert "- `sgm validate` after edits" in claude_text
     assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`" in (
         claude_text
@@ -128,6 +135,7 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
         "Main agent: orchestrate spec work and hand implementation to a sub-agent."
         in agents_text
     )
+    assert SPEC_SELECTION_GUIDANCE in agents_text
     assert (
         MODULARITY_GUIDANCE in agents_text
     )
@@ -155,6 +163,7 @@ def test_init_rewrites_stale_claude_section(tmp_path: Path, sgm_executable: Path
     assert claude_text.count("## SGM") == 1
     assert "old instructions" not in claude_text
     assert "Use `sgm` before and after governed edits:" in claude_text
+    assert "Use the narrower behavior spec that matches the work" in claude_text
     assert "- `sgm validate` after edits" in claude_text
     assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`" in (
         claude_text

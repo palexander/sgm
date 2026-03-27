@@ -13,6 +13,10 @@ AGENTS_GUIDANCE_LINE = (
 PROPOSAL_GUIDANCE_LINE = (
     "Proposal records are durable immediately in `.sgm/persisted/proposals/`."
 )
+SPEC_SELECTION_GUIDANCE_LINE = (
+    "Use the narrower behavior spec that matches the work: command model, "
+    "context and delta, validation and focus, persistence, init, or spec format."
+)
 
 
 @dataclass(slots=True)
@@ -65,6 +69,8 @@ class InitService:
         pattern = re.compile(
             r"(?ms)^Use `sgm` when working in governed areas\.\n\n"
             r"(?:- Main agent: orchestrate spec work and hand implementation to a sub-agent\.\n)?"
+            r"(?:- Use the narrower behavior spec that matches the work: command model, "
+            r"context and delta, validation and focus, persistence, init, or spec format\.\n)?"
             r"(?:- Prefer modules that align with a single spec concern so "
             r"per-spec work and commits stay coherent\.\n)?"
             r"(?:- Proposal records are durable immediately in `\.sgm/persisted/proposals/`\.\n)?"
@@ -98,6 +104,7 @@ class InitService:
                 "Use `sgm` when working in governed areas.",
                 "",
                 "- Main agent: orchestrate spec work and hand implementation to a sub-agent.",
+                f"- {SPEC_SELECTION_GUIDANCE_LINE}",
                 f"- {AGENTS_GUIDANCE_LINE}",
                 f"- {PROPOSAL_GUIDANCE_LINE}",
                 "- Before edits: `sgm context <spec-file-or-id>`",
@@ -114,6 +121,7 @@ class InitService:
                 "",
                 "Use `sgm` before and after governed edits:",
                 "",
+                "- Use the narrower behavior spec that matches the work",
                 "- `sgm context <spec-file-or-id>` before edits",
                 "- `sgm validate` after edits",
                 "- Prefer modules that align with a single spec concern when practical",

@@ -14,7 +14,8 @@ text: |
   6. It prints explicit offers about whether repo-local SGM guidance should live in `CLAUDE.md` or `AGENTS.md`.
   7. Generated guidance should not tell users to run `sgm persist` as part of the normal workflow when proposal state is already durable.
   8. It should also keep common local artifact noise such as Python cache directories out of Git.
-  9. This spec naturally splashes into the init command, filesystem scaffolding, the repo guidance docs it updates, and the init-focused tests that exercise that behavior.
+  9. Generated guidance should steer users toward the narrower behavior specs instead of the retired umbrella workflow spec.
+  10. This spec naturally splashes into the init command, filesystem scaffolding, the repo guidance docs it updates, and the init-focused tests that exercise that behavior.
 
 governs:
   - selector: "specs/init-bootstrap.sgm.yaml"
