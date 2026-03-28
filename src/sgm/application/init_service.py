@@ -10,6 +10,10 @@ AGENTS_GUIDANCE_LINE = (
     "Prefer modules that align with a single spec concern so "
     "per-spec work and commits stay coherent."
 )
+SPEC_EDIT_GUIDANCE_LINE = (
+    "Do not edit spec files directly during implementation; use "
+    "`sgm propose` for incidental splash expansion."
+)
 PROPOSAL_GUIDANCE_LINE = (
     "Proposal records are durable immediately in `.sgm/persisted/proposals/`."
 )
@@ -73,6 +77,8 @@ class InitService:
             r"context and delta, validation and focus, persistence, init, or spec format\.\n)?"
             r"(?:- Prefer modules that align with a single spec concern so "
             r"per-spec work and commits stay coherent\.\n)?"
+            r"(?:- Do not edit spec files directly during implementation; use "
+            r"`sgm propose` for incidental splash expansion\.\n)?"
             r"(?:- Proposal records are durable immediately in `\.sgm/persisted/proposals/`\.\n)?"
             r"- Before edits: `(?:uv run )?sgm context <spec-file-or-id>`\n"
             r"- After edits: `(?:uv run )?sgm validate(?: <spec-file-or-id>)?`\n"
@@ -105,6 +111,7 @@ class InitService:
                 "- Main agent: orchestrate spec work and hand implementation to a sub-agent.",
                 f"- {SPEC_SELECTION_GUIDANCE_LINE}",
                 f"- {AGENTS_GUIDANCE_LINE}",
+                f"- {SPEC_EDIT_GUIDANCE_LINE}",
                 f"- {PROPOSAL_GUIDANCE_LINE}",
                 "- Before edits: `sgm context <spec-file-or-id>`",
                 "- After edits: `sgm validate`",
@@ -124,6 +131,10 @@ class InitService:
                 "- `sgm context <spec-file-or-id>` before edits",
                 "- `sgm validate` after edits",
                 "- Prefer modules that align with a single spec concern when practical",
+                (
+                    "- Do not edit spec files directly during implementation; "
+                    "use `sgm propose` for incidental splash expansion"
+                ),
                 "- Proposal records are durable immediately in `.sgm/persisted/proposals/`",
             ]
         )

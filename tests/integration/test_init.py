@@ -45,6 +45,10 @@ def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Pat
     assert (
         MODULARITY_GUIDANCE in agents_text
     )
+    assert (
+        "Do not edit spec files directly during implementation; use `sgm propose`"
+        in agents_text
+    )
     assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`." in (
         agents_text
     )
@@ -137,6 +141,10 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
     assert (
         MODULARITY_GUIDANCE in agents_text
     )
+    assert (
+        "Do not edit spec files directly during implementation; use `sgm propose`"
+        in agents_text
+    )
     assert "Proposal records are durable immediately" in agents_text
     assert "`sgm context <spec-file-or-id>`" in agents_text
     assert "`sgm validate`" in agents_text
@@ -163,6 +171,10 @@ def test_init_rewrites_stale_claude_section(tmp_path: Path, sgm_executable: Path
     assert "Use `sgm` before and after governed edits:" in claude_text
     assert "Use the narrower behavior spec that matches the work" in claude_text
     assert "- `sgm validate` after edits" in claude_text
+    assert (
+        "- Do not edit spec files directly during implementation; use `sgm propose`"
+        in claude_text
+    )
     assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`" in (
         claude_text
     )

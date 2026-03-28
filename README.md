@@ -63,12 +63,15 @@ When implementing a governed spec, the intended pattern is:
 - the main agent orchestrates
 - a sub-agent performs the implementation work
 - modules should align to a single spec concern when practical so per-spec work and commits stay coherent
+- agents should not edit spec files directly during implementation
+- incidental splash expansion should go through `uv run sgm propose`
 
 ## Human Workflow
 
 - Write or update the spec under `specs/` that matches the behavior you are changing.
 - Use the narrower behavior specs rather than the retired umbrella workflow spec.
 - Define the spec's initial `governs` selectors.
+- During implementation, do not edit spec files directly; use `sgm propose` if a change needs incidental splash expansion.
 - Run `uv run sgm validate` to see whether the current repo state is valid across active specs, or `uv run sgm validate <spec>` for one spec.
 - Review pending governance expansions with `uv run sgm proposals list`.
 - Approve or reject proposals as part of review with `uv run sgm proposals approve <proposal-id>` or `uv run sgm proposals reject <proposal-id>`.

@@ -12,7 +12,8 @@ text: |
   4. Implementation should prefer modules that align with a single spec concern so per-spec work and commits stay coherent.
   5. `sgm sync` remains a debug and rebuild tool, not a normal prerequisite.
   6. Repo guidance should not tell humans or agents to add a separate persistence step to the normal loop when proposal state is already durable.
-  7. This spec naturally splashes into the CLI/help surface, orchestration guidance, and docs/tests that explain the shared command model.
+  7. During implementation, agents should not edit spec files directly; incidental splash expansion should go through `sgm propose` instead.
+  8. This spec naturally splashes into the CLI/help surface, orchestration guidance, and docs/tests that explain the shared command model.
 
 governs:
   - selector: "specs/cli-command-model.sgm.yaml"
