@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: sgm-validate
+        name: sgm validate
+        entry: python3 integrations/pre-commit/bin/validate.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: Run sgm validate before commit.
