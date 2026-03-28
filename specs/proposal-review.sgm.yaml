@@ -1,0 +1,39 @@
+id: spec-sgm-proposal-review-001
+title: "SGM Interactive Proposal Review"
+version: 1
+status: active
+author: paul
+
+text: |
+  SGM should provide a human-friendly interactive review flow for pending proposals:
+  1. The review flow surfaces one pending proposal at a time in a stable, deterministic order.
+  2. The reviewer can act quickly with simple single-key choices such as approve, reject, or skip.
+  3. Skip leaves the proposal pending and moves on to the next item without mutating review state.
+  4. Approve and reject record the review decision immediately using the normal durable proposal record path.
+  5. Each prompt should include only the essentials needed to decide quickly: proposal id, target spec, proposed path, proposal reason, and the spec text or a concise summary of the spec that owns the proposal.
+  6. The review flow should not surface broader related decisions or docs by default because proposals are additive-only splash expansions.
+  7. The reviewer should be able to press `g` to expand the prompt and show the governed files for the target spec when they want more context.
+  8. The flow should stay compact and focused; optional keys like `q` or `?` may be included if they help make the interaction clearer.
+  9. This spec naturally splashes into the proposal-review command path, proposal/context rendering, and the docs/tests that explain how humans review pending governance changes.
+
+governs:
+  - selector: "specs/proposal-review.sgm.yaml"
+    priority: 1
+  - selector: "src/sgm/cli.py"
+    priority: 1
+  - selector: "src/sgm/application/services.py"
+    priority: 1
+  - selector: "src/sgm/domain/render_commands.py"
+    priority: 1
+  - selector: "src/sgm/domain/render_shared.py"
+    priority: 1
+  - selector: "src/sgm/domain/proposal_models.py"
+    priority: 1
+  - selector: "src/sgm/domain/context_models.py"
+    priority: 1
+  - selector: "README.md"
+    priority: 2
+  - selector: "AGENTS.md"
+    priority: 2
+  - selector: "tests/integration/test_cli_smoke.py"
+    priority: 2
