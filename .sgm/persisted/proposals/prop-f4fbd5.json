@@ -4,7 +4,7 @@
   "path": "tests/unit/test_spec_loader.py",
   "reason": "Add coverage for optional governs priority defaulting to 1 in the spec loader",
   "review_reason": null,
-  "reviewed_at": null,
+  "reviewed_at": "2026-03-27T23:12:19",
   "spec_id": "spec-sgm-cli-workflow-001",
-  "status": "pending"
+  "status": "approved"
 }

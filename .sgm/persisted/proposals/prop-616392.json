@@ -4,7 +4,7 @@
   "path": "specs/spec-document-format.sgm.yaml",
   "reason": "Govern the renamed spec artifact under the .sgm.yaml convention",
   "review_reason": null,
-  "reviewed_at": null,
+  "reviewed_at": "2026-03-27T23:13:56",
   "spec_id": "spec-sgm-spec-document-format-001",
-  "status": "pending"
+  "status": "approved"
 }

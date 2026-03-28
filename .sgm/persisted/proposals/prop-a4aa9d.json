@@ -4,7 +4,7 @@
   "path": "integrations/README.md",
   "reason": "Top-level optional integrations docs explain how external enforcement layers can complement the shared SGM command model.",
   "review_reason": null,
-  "reviewed_at": null,
+  "reviewed_at": "2026-03-27T23:14:40",
   "spec_id": "spec-sgm-cli-command-model-001",
-  "status": "pending"
+  "status": "approved"
 }

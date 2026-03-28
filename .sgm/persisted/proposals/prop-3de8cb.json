@@ -4,7 +4,7 @@
   "path": "specs/sgm-persistence-artifacts.yaml",
   "reason": "Rename spec artifact to the new .sgm.yaml naming convention",
   "review_reason": null,
-  "reviewed_at": null,
+  "reviewed_at": "2026-03-27T23:13:27",
   "spec_id": "spec-sgm-cli-workflow-001",
-  "status": "pending"
+  "status": "approved"
 }

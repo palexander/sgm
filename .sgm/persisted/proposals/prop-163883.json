@@ -4,7 +4,7 @@
   "path": "integrations/pre-commit/README.md",
   "reason": "Optional pre-commit docs explain commit-time SGM enforcement and strict versus warn-allowed modes.",
   "review_reason": null,
-  "reviewed_at": null,
+  "reviewed_at": "2026-03-27T23:15:07",
   "spec_id": "spec-sgm-validation-focus-001",
-  "status": "pending"
+  "status": "approved"
 }

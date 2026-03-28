@@ -4,7 +4,7 @@
   "path": "integrations/pre-commit/bin/validate.py",
   "reason": "Pre-commit validation hook enforces sgm validate as a model-agnostic final gate before commit.",
   "review_reason": null,
-  "reviewed_at": null,
+  "reviewed_at": "2026-03-27T23:15:19",
   "spec_id": "spec-sgm-validation-focus-001",
-  "status": "pending"
+  "status": "approved"
 }

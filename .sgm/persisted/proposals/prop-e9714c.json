@@ -4,7 +4,7 @@
   "path": "integrations/claude-hooks/bin/posttool.py",
   "reason": "PostToolUse hook records successful sgm context and validate runs for later enforcement.",
   "review_reason": null,
-  "reviewed_at": null,
+  "reviewed_at": "2026-03-27T23:14:58",
   "spec_id": "spec-sgm-validation-focus-001",
-  "status": "pending"
+  "status": "approved"
 }

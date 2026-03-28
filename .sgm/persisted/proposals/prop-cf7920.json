@@ -4,7 +4,7 @@
   "path": "integrations/claude-hooks/.claude/settings.json",
   "reason": "Sample Claude project hooks wire SGM focus and validation checks into tool execution.",
   "review_reason": null,
-  "reviewed_at": null,
+  "reviewed_at": "2026-03-27T23:14:49",
   "spec_id": "spec-sgm-validation-focus-001",
-  "status": "pending"
+  "status": "approved"
 }

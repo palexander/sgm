@@ -4,7 +4,7 @@
   "path": "integrations/claude-hooks/README.md",
   "reason": "Optional Claude hooks enforce spec focus, proposal flow, and validate-before-stop behavior.",
   "review_reason": null,
-  "reviewed_at": null,
+  "reviewed_at": "2026-03-27T23:14:19",
   "spec_id": "spec-sgm-validation-focus-001",
-  "status": "pending"
+  "status": "approved"
 }
