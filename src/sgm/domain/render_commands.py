@@ -10,7 +10,8 @@ from sgm.domain.models import (
     SyncFilesResult,
     SyncSpecResult,
 )
-from sgm.domain.render_shared import render_proposal
+from sgm.domain.proposal_models import ProposalReviewItem
+from sgm.domain.render_shared import render_proposal, render_proposal_review
 
 
 def render_sync_files(result: SyncFilesResult) -> str:
@@ -87,3 +88,7 @@ def render_rejection(result: RejectResult) -> str:
     if result.review_reason is not None:
         lines.append(f"  reason: {result.review_reason}")
     return "\n".join(lines)
+
+
+def render_proposal_review_prompt(review: ProposalReviewItem, expanded: bool = False) -> str:
+    return "\n".join(render_proposal_review(review=review, expanded=expanded))

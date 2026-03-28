@@ -35,6 +35,19 @@ class ProposalListResult:
 
 
 @dataclass(frozen=True, slots=True)
+class ProposalReviewItem:
+    proposal: Proposal
+    spec_title: str
+    spec_text: str
+    governed_files: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ProposalReviewResult:
+    proposals: tuple[ProposalReviewItem, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class ApprovalResult:
     proposal_id: str
     spec_id: str

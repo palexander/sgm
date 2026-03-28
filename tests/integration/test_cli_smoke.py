@@ -316,6 +316,121 @@ def test_validate_no_record_leaves_recorded_state_unchanged(
     assert "[FILES] 3 governed" in context_result.stdout
 
 
+def test_proposals_review_walks_pending_items_in_order(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    audit_path = sample_repo.root / "src" / "middleware" / "audit.ts"
+    audit_path.write_text("export const audit = (): boolean => true;\n", encoding="utf-8")
+    session_dir = sample_repo.root / "src" / "utils"
+    session_dir.mkdir(parents=True)
+    session_path = session_dir / "session.ts"
+    session_path.write_text("export const session = (): boolean => true;\n", encoding="utf-8")
+
+    auth_proposal = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "propose",
+        "spec-001",
+        "src/middleware/auth.ts",
+        "Auth middleware should follow the service spec",
+    )
+    audit_proposal = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "propose",
+        "spec-001",
+        "src/middleware/audit.ts",
+        "Audit middleware should stay with service governance",
+    )
+    session_proposal = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "propose",
+        "spec-001",
+        "src/utils/session.ts",
+        "Session helpers should stay with service governance",
+    )
+    assert auth_proposal.returncode == 0
+    assert audit_proposal.returncode == 0
+    assert session_proposal.returncode == 0
+
+    pending_before_review = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "proposals",
+        "list",
+        "--status",
+        "pending",
+    )
+    ordered_ids = tuple(
+        line.split()[0]
+        for line in pending_before_review.stdout.splitlines()
+        if line.startswith("prop-")
+    )
+    assert len(ordered_ids) == 3
+    skipped_id, rejected_id, approved_id = ordered_ids
+
+    review_result = subprocess.run(
+        [str(sgm_executable), "proposals", "review"],
+        cwd=sample_repo.root,
+        input="?\ng\ns\nr too broad\na\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert review_result.returncode == 0
+    assert "[REVIEW] 3 pending proposals" in review_result.stdout
+    assert review_result.stdout.index(skipped_id) < review_result.stdout.index(rejected_id)
+    assert review_result.stdout.index(rejected_id) < review_result.stdout.index(approved_id)
+    assert "[HELP] a=approve r[ reason]=reject s=skip g=files q=quit ?=help" in (
+        review_result.stdout
+    )
+    assert "[FILES] 3 governed" in review_result.stdout
+    assert f"[SKIP] {skipped_id}" in review_result.stdout
+    assert f"[REJECTED] {rejected_id}" in review_result.stdout
+    assert "reason: too broad" in review_result.stdout
+    assert f"[APPROVED] {approved_id}" in review_result.stdout
+    assert "All changes for this spec must stay within the files governed by it:" in (
+        review_result.stdout
+    )
+
+    pending_list = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "proposals",
+        "list",
+        "--status",
+        "pending",
+    )
+    assert skipped_id in pending_list.stdout
+    assert rejected_id not in pending_list.stdout
+    assert approved_id not in pending_list.stdout
+
+    rejected_list = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "proposals",
+        "list",
+        "--status",
+        "rejected",
+    )
+    assert rejected_id in rejected_list.stdout
+    assert "review_reason: too broad" in rejected_list.stdout
+
+    approved_list = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "proposals",
+        "list",
+        "--status",
+        "approved",
+    )
+    assert approved_id in approved_list.stdout
+
+
 def test_context_uses_git_diff_when_no_local_spec_snapshot_exists(
     tmp_path: Path,
     sgm_executable: Path,

@@ -25,6 +25,7 @@ uv run sgm init
 uv run sgm context specs/context-and-delta.sgm.yaml
 uv run sgm validate
 uv run sgm validate --no-record
+uv run sgm proposals review
 ```
 
 `sgm` automatically refreshes file and spec state from disk on normal commands.
@@ -59,6 +60,12 @@ first run after a governing spec file changes on disk.
 architectural or migration decisions, even when those files are not governed by
 a behavioral spec.
 
+`sgm proposals review` walks pending proposals one at a time in deterministic
+order. Use `a` to approve, `r` to reject, `s` to skip, and `g` to expand the
+current prompt with the governed files for the target spec. In a real terminal,
+those actions work as single-key input; piped and test runs fall back to
+line-based input.
+
 When implementing a governed spec, the intended pattern is:
 - the main agent orchestrates
 - a sub-agent performs the implementation work
@@ -75,6 +82,7 @@ When implementing a governed spec, the intended pattern is:
 - Run `uv run sgm validate` to see whether the current repo state is valid across active specs, or `uv run sgm validate <spec>` for one spec.
 - Review pending governance expansions with `uv run sgm proposals list`.
 - Approve or reject proposals as part of review with `uv run sgm proposals approve <proposal-id>` or `uv run sgm proposals reject <proposal-id>`.
+- Use `uv run sgm proposals review` when you want to step through pending proposals interactively.
 
 ## Persistence Model
 

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
+import click
 import typer
 
 from sgm.adapters.filesystem import FileSystemAdapter
@@ -21,6 +23,7 @@ from sgm.domain.errors import (
 )
 from sgm.domain.models import ExitCode, ProposalStatus
 from sgm.domain.paths import ensure_repo_root
+from sgm.domain.render_commands import render_proposal_review_prompt
 from sgm.domain.renderers import (
     render_approval,
     render_context,
@@ -182,6 +185,95 @@ def proposals_reject(
 def _proposals_reject(service: SgmService, proposal_id: str, reason: str | None) -> ExitCode:
     typer.echo(render_rejection(service.proposals_reject(proposal_id, reason)))
     return 0
+
+
+@proposals_app.command("review", help="Review pending governance proposals interactively.")
+def proposals_review() -> None:
+    _run_command(_proposals_review)
+
+
+def _proposals_review(service: SgmService) -> ExitCode:
+    reviews = service.proposals_review().proposals
+    if not reviews:
+        typer.echo("[REVIEW] 0 pending proposals")
+        return 0
+
+    typer.echo(f"[REVIEW] {len(reviews)} pending proposals")
+    for review in reviews:
+        expanded = False
+        while True:
+            typer.echo(render_proposal_review_prompt(review, expanded=expanded))
+            action, reason = _prompt_review_action()
+            if action == "a":
+                typer.echo(render_approval(service.proposals_approve(review.proposal.id)))
+                break
+            if action == "r":
+                typer.echo(render_rejection(service.proposals_reject(review.proposal.id, reason)))
+                break
+            if action == "s":
+                typer.echo(f"[SKIP] {review.proposal.id}")
+                break
+            if action == "g":
+                expanded = True
+                continue
+            if action == "q":
+                typer.echo("[REVIEW] quit")
+                return 0
+            if action == "?":
+                typer.echo("[HELP] a=approve r[ reason]=reject s=skip g=files q=quit ?=help")
+                continue
+            typer.echo("[HELP] enter a, r, s, g, q, or ?")
+    return 0
+
+
+def _prompt_review_action() -> tuple[str, str | None]:
+    if sys.stdin.isatty() and sys.stdout.isatty():
+        return _prompt_review_action_tty()
+    return _prompt_review_action_line()
+
+
+def _prompt_review_action_tty() -> tuple[str, str | None]:
+    typer.echo("Action [a/r/s/g/q/?]: ", nl=False)
+    raw_action = click.getchar()
+    typer.echo(raw_action)
+    action = raw_action.strip().lower()[:1]
+    if action != "r":
+        return action, None
+    try:
+        reason = input("Reject reason (optional): ").strip()
+    except EOFError:
+        return "r", None
+    return "r", reason or None
+
+
+def _prompt_review_action_line() -> tuple[str, str | None]:
+    try:
+        raw_action = input("Action [a/r/s/g/q/?]: ")
+    except EOFError:
+        return "q", None
+    stripped = raw_action.strip()
+    normalized = stripped.lower()
+    if (
+        normalized in {"a", "approve"}
+        or normalized.startswith("a ")
+        or normalized.startswith("approve ")
+    ):
+        return "a", None
+    if normalized in {"r", "reject"}:
+        return "r", None
+    if normalized.startswith("r "):
+        return "r", stripped.split(" ", maxsplit=1)[1].strip() or None
+    if normalized.startswith("reject "):
+        return "r", stripped.split(" ", maxsplit=1)[1].strip() or None
+    if normalized in {"s", "skip"} or normalized.startswith("s ") or normalized.startswith("skip "):
+        return "s", None
+    if normalized in {"g", "files", "governed"}:
+        return "g", None
+    if normalized in {"q", "quit"}:
+        return "q", None
+    if normalized in {"?", "help"}:
+        return "?", None
+    return normalized[:1], None
 
 
 @sync_app.command("files", help="Scan files and refresh code-node state.")

@@ -24,6 +24,7 @@ from sgm.domain.models import (
     ValidationSuiteReport,
 )
 from sgm.domain.paths import to_repo_relative_posix
+from sgm.domain.proposal_models import ProposalReviewItem, ProposalReviewResult
 
 
 @dataclass(slots=True)
@@ -67,6 +68,20 @@ class SgmService:
 
     def proposals_list(self, status: ProposalStatus | None) -> ProposalListResult:
         return self.graph_repository.list_proposals(status)
+
+    def proposals_review(self) -> ProposalReviewResult:
+        review_items: list[ProposalReviewItem] = []
+        for proposal in self.graph_repository.list_proposals("pending").proposals:
+            context = self.graph_repository.get_context(proposal.spec_id)
+            review_items.append(
+                ProposalReviewItem(
+                    proposal=proposal,
+                    spec_title=context.spec.title,
+                    spec_text=context.spec.text,
+                    governed_files=context.governed_files,
+                )
+            )
+        return ProposalReviewResult(proposals=tuple(review_items))
 
     def proposals_approve(self, proposal_id: str) -> ApprovalResult:
         return self.graph_repository.approve_proposal(proposal_id)
