@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-03-27T15:48:11",
+  "id": "prop-129959",
+  "path": "integrations/claude-hooks/bin/stop.py",
+  "reason": "Stop hooks require sgm validate before Claude can finish spec-scoped work.",
+  "review_reason": null,
+  "reviewed_at": null,
+  "spec_id": "spec-sgm-validation-focus-001",
+  "status": "pending"
+}

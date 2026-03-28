@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-03-27T15:51:54",
+  "id": "prop-af63ad",
+  "path": "integrations/pre-commit/.pre-commit-config.yaml",
+  "reason": "Sample pre-commit config wires the SGM validation gate into commit-time enforcement.",
+  "review_reason": null,
+  "reviewed_at": null,
+  "spec_id": "spec-sgm-validation-focus-001",
+  "status": "pending"
+}
