@@ -9,3 +9,8 @@ __pycache__/
 demo-repos/
 .sgm/work/
 .sgm/persisted/validations/
+
+__pycache__/
+*.pyc
+.sgm/work/
+sgm-state/
