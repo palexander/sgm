@@ -105,3 +105,46 @@ def test_load_spec_document_rejects_non_integer_governs_priority(tmp_path: Path)
 
     with pytest.raises(SpecValidationError):
         load_spec_document(spec_path, tmp_path)
+
+
+def test_load_spec_document_rejects_missing_required_top_level_field(tmp_path: Path) -> None:
+    spec_path = tmp_path / "specs" / "spec.sgm.yaml"
+    spec_path.parent.mkdir(parents=True)
+    spec_path.write_text(
+        "\n".join(
+            [
+                'title: "Service Pattern"',
+                "version: 1",
+                "status: active",
+                "author: paul",
+                'text: "Example"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SpecValidationError, match="id must be a non-empty string"):
+        load_spec_document(spec_path, tmp_path)
+
+
+def test_load_spec_document_rejects_missing_governs_selector(tmp_path: Path) -> None:
+    spec_path = tmp_path / "specs" / "spec.sgm.yaml"
+    spec_path.parent.mkdir(parents=True)
+    spec_path.write_text(
+        "\n".join(
+            [
+                "id: spec-001",
+                'title: "Service Pattern"',
+                "version: 1",
+                "status: active",
+                "author: paul",
+                'text: "Example"',
+                "governs:",
+                "  - {}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SpecValidationError, match="selector must be a non-empty string"):
+        load_spec_document(spec_path, tmp_path)

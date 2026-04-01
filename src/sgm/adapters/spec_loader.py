@@ -1,75 +1,97 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
 import yaml
+from jsonschema import Draft202012Validator
 
-from sgm.domain.errors import SpecValidationError
+from sgm.domain.errors import InfrastructureError, SpecValidationError
 from sgm.domain.models import GovernanceSelector, SpecDocument, SpecStatus
 
 
 def load_spec_document(path: Path, repo_root: Path) -> SpecDocument:
     source_text: str = path.read_text(encoding="utf-8")
     raw_document: object = yaml.safe_load(source_text)
-    if not isinstance(raw_document, dict):
-        raise SpecValidationError("spec file must contain a mapping")
+    _validate_against_schema(raw_document)
 
     spec_mapping: dict[str, Any] = cast(dict[str, Any], raw_document)
-    governs_raw: object = spec_mapping.get("governs", [])
-    if not isinstance(governs_raw, list):
-        raise SpecValidationError("governs must be a list")
-
     governs: list[GovernanceSelector] = []
-    for governs_item in governs_raw:
-        if not isinstance(governs_item, dict):
-            raise SpecValidationError("each governs entry must be a mapping")
+    for governs_item in cast(list[dict[str, Any]], spec_mapping.get("governs", [])):
         governs.append(
             GovernanceSelector(
-                selector=_require_str(governs_item, "selector"),
-                priority=_optional_int(governs_item, "priority", default=1),
+                selector=cast(str, governs_item["selector"]),
+                priority=cast(int, governs_item.get("priority", 1)),
             )
         )
 
     return SpecDocument(
-        id=_require_str(spec_mapping, "id"),
+        id=cast(str, spec_mapping["id"]),
         source_path=path.resolve().relative_to(repo_root.resolve()).as_posix(),
         source_text=source_text,
-        title=_require_str(spec_mapping, "title"),
-        version=_require_int(spec_mapping, "version"),
-        text=_require_str(spec_mapping, "text"),
-        status=cast(
-            SpecStatus,
-            _require_literal(spec_mapping, "status", {"draft", "active", "deprecated"}),
-        ),
-        author=_require_str(spec_mapping, "author"),
+        title=cast(str, spec_mapping["title"]),
+        version=cast(int, spec_mapping["version"]),
+        text=cast(str, spec_mapping["text"]),
+        status=cast(SpecStatus, spec_mapping["status"]),
+        author=cast(str, spec_mapping["author"]),
         governs=tuple(governs),
     )
 
 
-def _require_str(mapping: dict[str, Any], key: str) -> str:
-    value: object = mapping.get(key)
-    if not isinstance(value, str) or value == "":
-        raise SpecValidationError(f"{key} must be a non-empty string")
-    return value
+def _validate_against_schema(raw_document: object) -> None:
+    errors = sorted(_spec_validator().iter_errors(raw_document), key=str)
+    if not errors:
+        return
+    raise SpecValidationError(_format_schema_error(errors[0]))
 
 
-def _require_int(mapping: dict[str, Any], key: str) -> int:
-    value: object = mapping.get(key)
-    if not isinstance(value, int):
-        raise SpecValidationError(f"{key} must be an integer")
-    return value
+@lru_cache(maxsize=1)
+def _spec_validator() -> Any:
+    schema_path = Path(__file__).resolve().parents[3] / "specs" / "sgm-spec-document-format.yaml"
+    try:
+        schema = yaml.safe_load(schema_path.read_text(encoding="utf-8"))
+    except OSError as error:
+        raise InfrastructureError(f"failed to read spec schema: {error}") from error
+    if not isinstance(schema, dict):
+        raise InfrastructureError("spec schema must contain a mapping")
+    try:
+        Draft202012Validator.check_schema(schema)
+    except Exception as error:
+        raise InfrastructureError(f"spec schema is invalid: {error}") from error
+    return Draft202012Validator(schema)
 
 
-def _optional_int(mapping: dict[str, Any], key: str, default: int) -> int:
-    value: object = mapping.get(key, default)
-    if not isinstance(value, int):
-        raise SpecValidationError(f"{key} must be an integer")
-    return value
-
-
-def _require_literal(mapping: dict[str, Any], key: str, allowed: set[str]) -> str:
-    value: str = _require_str(mapping, key)
-    if value not in allowed:
-        raise SpecValidationError(f"{key} must be one of {sorted(allowed)}")
-    return value
+def _format_schema_error(error: Any) -> str:
+    path = list(error.absolute_path)
+    if not path:
+        if error.validator == "type" and error.validator_value == "object":
+            return "spec file must contain a mapping"
+        if error.validator == "required":
+            missing_key = error.message.split("'")[1]
+            return f"{missing_key} must be a non-empty string"
+    if path == ["governs"] and error.validator == "type":
+        return "governs must be a list"
+    if len(path) == 1 and error.validator == "required":
+        missing_key = error.message.split("'")[1]
+        return f"{missing_key} must be a non-empty string"
+    if len(path) >= 1 and path[0] == "governs":
+        if len(path) == 1 and error.validator == "type":
+            return "each governs entry must be a mapping"
+        if error.validator == "required":
+            return "selector must be a non-empty string"
+        if path[-1] == "selector":
+            return "selector must be a non-empty string"
+        if path[-1] == "priority":
+            return "priority must be an integer"
+    if path and error.validator == "type":
+        key = str(path[-1])
+        if error.validator_value == "integer":
+            return f"{key} must be an integer"
+        if error.validator_value == "string":
+            return f"{key} must be a non-empty string"
+    if path and error.validator == "minLength":
+        return f"{path[-1]} must be a non-empty string"
+    if path and error.validator == "enum":
+        return f"{path[-1]} must be one of {sorted(cast(set[str], error.validator_value))}"
+    return f"spec document does not match schema: {error.message}"

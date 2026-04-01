@@ -1,0 +1,43 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: "SGM Spec Document"
+type: object
+required:
+  - id
+  - title
+  - version
+  - status
+  - author
+  - text
+properties:
+  id:
+    type: string
+    minLength: 1
+  title:
+    type: string
+    minLength: 1
+  version:
+    type: integer
+  status:
+    type: string
+    enum:
+      - draft
+      - active
+      - deprecated
+  author:
+    type: string
+    minLength: 1
+  text:
+    type: string
+    minLength: 1
+  governs:
+    type: array
+    items:
+      type: object
+      required:
+        - selector
+      properties:
+        selector:
+          type: string
+          minLength: 1
+        priority:
+          type: integer

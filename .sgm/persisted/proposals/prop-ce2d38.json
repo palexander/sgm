@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-01T15:40:41",
+  "id": "prop-ce2d38",
+  "path": "pyproject.toml",
+  "reason": "Add the runtime schema-validation dependency needed to enforce the formal spec schema artifact.",
+  "review_reason": null,
+  "reviewed_at": null,
+  "spec_id": "spec-sgm-spec-document-format-001",
+  "status": "pending"
+}
