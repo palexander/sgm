@@ -1,8 +1,18 @@
 from __future__ import annotations
 
+import os
 import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 
+from sgm import cli
+from sgm.domain.proposal_models import (
+    ApprovalResult,
+    Proposal,
+    ProposalReviewItem,
+    ProposalReviewResult,
+    RejectResult,
+)
 from tests.integration.helpers import bump_spec_version, create_sample_repo, run_cli
 
 
@@ -383,6 +393,7 @@ def test_proposals_review_walks_pending_items_in_order(
 
     assert review_result.returncode == 0
     assert "[REVIEW] 3 pending proposals" in review_result.stdout
+    assert "\x1b[" not in review_result.stdout
     assert review_result.stdout.index(skipped_id) < review_result.stdout.index(rejected_id)
     assert review_result.stdout.index(rejected_id) < review_result.stdout.index(approved_id)
     assert "[HELP] a=approve r[ reason]=reject s=skip g=files q=quit ?=help" in (
@@ -429,6 +440,151 @@ def test_proposals_review_walks_pending_items_in_order(
         "approved",
     )
     assert approved_id in approved_list.stdout
+
+
+def test_proposals_review_clears_and_redraws_in_tty(
+    monkeypatch,
+) -> None:
+    proposal = Proposal(
+        id="prop-tty",
+        spec_id="spec-001",
+        path="src/middleware/auth.ts",
+        reason="Auth middleware should follow the service spec",
+        status="pending",
+        created_at=datetime(2026, 3, 28, tzinfo=UTC),
+        reviewed_at=None,
+        review_reason=None,
+    )
+    review_item = ProposalReviewItem(
+        proposal=proposal,
+        spec_title="Service Spec",
+        spec_text="Line one\nLine two",
+        governed_files=("src/middleware/auth.ts", "src/services/discharge.ts"),
+    )
+
+    class _TTYStream:
+        def isatty(self) -> bool:
+            return True
+
+    class _FakeService:
+        def __init__(self) -> None:
+            self.approved: list[str] = []
+
+        def proposals_review(self) -> ProposalReviewResult:
+            return ProposalReviewResult(proposals=(review_item,))
+
+        def proposals_approve(self, proposal_id: str) -> ApprovalResult:
+            self.approved.append(proposal_id)
+            return ApprovalResult(
+                proposal_id=proposal_id,
+                spec_id=proposal.spec_id,
+                path=proposal.path,
+            )
+
+        def proposals_reject(self, proposal_id: str, review_reason: str | None) -> RejectResult:
+            raise AssertionError("reject path should not be used in this test")
+
+    captured: list[str] = []
+    key_presses = iter(["g", "a"])
+
+    monkeypatch.setattr(cli.sys, "stdin", _TTYStream())
+    monkeypatch.setattr(cli.sys, "stdout", _TTYStream())
+    monkeypatch.setattr(cli.click, "clear", lambda: captured.append("<clear>"))
+    monkeypatch.setattr(cli.click, "getchar", lambda: next(key_presses))
+    monkeypatch.setattr(
+        cli.typer,
+        "echo",
+        lambda message="", nl=True: captured.append(message),
+    )
+
+    exit_code = cli._proposals_review(_FakeService())
+
+    assert exit_code == 0
+    assert captured.count("<clear>") == 2
+    assert captured[0] == "<clear>"
+    output = "\n".join(captured)
+    assert "[REVIEW] 1/1 pending proposals" in output
+    assert "[FILES] 2 governed" in output
+    assert "[APPROVED] prop-tty" in output
+    assert "Action [a/r/s/g/q/?]: " in output
+
+
+def test_proposals_review_caps_spec_excerpt_to_terminal_height(
+    monkeypatch,
+) -> None:
+    proposal = Proposal(
+        id="prop-height",
+        spec_id="spec-001",
+        path="src/middleware/auth.ts",
+        reason="Auth middleware should follow the service spec",
+        status="pending",
+        created_at=datetime(2026, 3, 28, tzinfo=UTC),
+        reviewed_at=None,
+        review_reason=None,
+    )
+    spec_text = "\n".join(
+        [
+            "Line one",
+            "Line two",
+            "Line three",
+            "Line four",
+            "Line five",
+            "Line six",
+            "Line seven",
+        ]
+    )
+    review_item = ProposalReviewItem(
+        proposal=proposal,
+        spec_title="Service Spec",
+        spec_text=spec_text,
+        governed_files=("src/middleware/auth.ts",),
+    )
+
+    class _TTYStream:
+        def isatty(self) -> bool:
+            return True
+
+    class _FakeService:
+        def proposals_review(self) -> ProposalReviewResult:
+            return ProposalReviewResult(proposals=(review_item,))
+
+        def proposals_approve(self, proposal_id: str) -> ApprovalResult:
+            return ApprovalResult(
+                proposal_id=proposal_id,
+                spec_id=proposal.spec_id,
+                path=proposal.path,
+            )
+
+        def proposals_reject(self, proposal_id: str, review_reason: str | None) -> RejectResult:
+            raise AssertionError("reject path should not be used in this test")
+
+    captured: list[str] = []
+    key_presses = iter(["a"])
+
+    monkeypatch.setattr(cli.sys, "stdin", _TTYStream())
+    monkeypatch.setattr(cli.sys, "stdout", _TTYStream())
+    monkeypatch.setattr(cli.click, "clear", lambda: captured.append("<clear>"))
+    monkeypatch.setattr(cli.click, "getchar", lambda: next(key_presses))
+    monkeypatch.setattr(
+        cli.shutil,
+        "get_terminal_size",
+        lambda fallback=(80, 24): os.terminal_size((80, 12)),
+    )
+    monkeypatch.setattr(
+        cli.typer,
+        "echo",
+        lambda message="", nl=True: captured.append(message),
+    )
+
+    exit_code = cli._proposals_review(_FakeService())
+
+    assert exit_code == 0
+    output = "\n".join(captured)
+    assert captured.count("<clear>") == 1
+    assert "[REVIEW] 1/1 pending proposals" in output
+    assert "[spec excerpt truncated]" in output
+    assert "\n\n  spec summary:" in output
+    assert "\n\n  keys: a=approve r[ reason]=reject s=skip g=files q=quit ?=help" in output
 
 
 def test_context_uses_git_diff_when_no_local_spec_snapshot_exists(

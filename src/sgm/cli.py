@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -23,7 +24,8 @@ from sgm.domain.errors import (
 )
 from sgm.domain.models import ExitCode, ProposalStatus
 from sgm.domain.paths import ensure_repo_root
-from sgm.domain.render_commands import render_proposal_review_prompt
+from sgm.domain.proposal_models import ProposalReviewItem
+from sgm.domain.render_shared import render_proposal_review
 from sgm.domain.renderers import (
     render_approval,
     render_context,
@@ -198,11 +200,23 @@ def _proposals_review(service: SgmService) -> ExitCode:
         typer.echo("[REVIEW] 0 pending proposals")
         return 0
 
-    typer.echo(f"[REVIEW] {len(reviews)} pending proposals")
-    for review in reviews:
+    interactive = _is_tty_review()
+    if not interactive:
+        typer.echo(f"[REVIEW] {len(reviews)} pending proposals")
+    for review_index, review in enumerate(reviews, start=1):
         expanded = False
         while True:
-            typer.echo(render_proposal_review_prompt(review, expanded=expanded))
+            if interactive:
+                click.clear()
+            typer.echo(
+                _render_review_screen(
+                    review=review,
+                    review_index=review_index,
+                    review_count=len(reviews),
+                    expanded=expanded,
+                    interactive=interactive,
+                )
+            )
             action, reason = _prompt_review_action()
             if action == "a":
                 typer.echo(render_approval(service.proposals_approve(review.proposal.id)))
@@ -226,8 +240,55 @@ def _proposals_review(service: SgmService) -> ExitCode:
     return 0
 
 
+def _is_tty_review() -> bool:
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _render_review_screen(
+    review: ProposalReviewItem,
+    review_index: int,
+    review_count: int,
+    expanded: bool,
+    interactive: bool,
+) -> str:
+    if interactive:
+        lines: list[str] = [f"[REVIEW] {review_index}/{review_count} pending proposals", ""]
+        height = _terminal_height()
+        spec_excerpt_lines = _review_spec_excerpt_lines(
+            review=review,
+            expanded=expanded,
+            height=height,
+        )
+    else:
+        lines = []
+        spec_excerpt_lines = None
+    lines.extend(
+        render_proposal_review(
+            review,
+            expanded=expanded,
+            spaced=interactive,
+            spec_excerpt_lines=spec_excerpt_lines,
+        )
+    )
+    return "\n".join(lines)
+
+
+def _terminal_height() -> int:
+    return shutil.get_terminal_size(fallback=(80, 24)).lines
+
+
+def _review_spec_excerpt_lines(review: ProposalReviewItem, expanded: bool, height: int) -> int:
+    fixed_lines = 10
+    if expanded:
+        fixed_lines += len(review.governed_files) + 2
+    available = height - fixed_lines
+    if available < 1:
+        return 1
+    return available
+
+
 def _prompt_review_action() -> tuple[str, str | None]:
-    if sys.stdin.isatty() and sys.stdout.isatty():
+    if _is_tty_review():
         return _prompt_review_action_tty()
     return _prompt_review_action_line()
 

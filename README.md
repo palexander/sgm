@@ -63,8 +63,11 @@ a behavioral spec.
 `sgm proposals review` walks pending proposals one at a time in deterministic
 order. Use `a` to approve, `r` to reject, `s` to skip, and `g` to expand the
 current prompt with the governed files for the target spec. In a real terminal,
-those actions work as single-key input; piped and test runs fall back to
-line-based input.
+the review screen redraws from the top between items so each proposal gets an
+uncluttered view. The prompt sizes the spec excerpt to the visible terminal
+height and keeps extra blank space before the key hints so the controls do not
+blend into the spec text. Piped and test runs fall back to line-based input and
+keep a plain transcript.
 
 When implementing a governed spec, the intended pattern is:
 - the main agent orchestrates
