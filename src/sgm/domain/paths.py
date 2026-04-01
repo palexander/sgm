@@ -7,8 +7,9 @@ from sgm.domain.models import RepoContext
 
 
 def ensure_repo_root(cwd: Path) -> RepoContext:
-    if not (cwd / ".git").is_dir():
-        raise RepoRootError("sgm must run from repo root (.git/ not found)")
+    git_marker = cwd / ".git"
+    if not (git_marker.is_dir() or git_marker.is_file()):
+        raise RepoRootError("sgm must run from repo root (.git not found)")
     return RepoContext(root=cwd)
 
 

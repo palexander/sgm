@@ -1,0 +1,26 @@
+id: spec-sgm-repo-root-worktree-001
+title: "SGM Repo Root And Worktree Support"
+version: 1
+status: active
+author: paul
+
+text: |
+  Repo-root detection should treat Git worktrees as first-class repo roots:
+  1. Commands that require the repo root should accept both a `.git` directory and a `.git` gitfile at the current working directory.
+  2. Git worktree roots should behave the same as primary repo roots for `init`, `context`, `validate`, proposal commands, and sync commands that share repo-root resolution.
+  3. Running from a nested subdirectory should still fail with a repo-root error even inside a valid repo or worktree.
+  4. The shared path-resolution module should remain the single place that decides whether the current directory is a valid repo root.
+  5. Tests should cover both unit-level root detection and integration-level command execution from a real `git worktree`.
+  6. This spec naturally splashes into the shared repo-root path logic, the CLI entry that depends on it, and targeted tests for worktree behavior.
+
+governs:
+  - selector: "specs/repo-root-worktree-support.sgm.yaml"
+    priority: 1
+  - selector: "src/sgm/domain/paths.py"
+    priority: 1
+  - selector: "src/sgm/cli.py"
+    priority: 1
+  - selector: "tests/integration/test_worktree_support.py"
+    priority: 1
+  - selector: "tests/unit/test_paths.py"
+    priority: 1
