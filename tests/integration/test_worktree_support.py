@@ -41,4 +41,4 @@ def test_validate_accepts_worktree_root(
     result = run_cli(sgm_executable, worktree_root, "validate", "--no-record")
 
     assert result.returncode == 0
-    assert "[VALIDATE] 2 spec(s): 2 pass, 0 warn, 0 fail" in result.stdout
+    assert "[PASS] no changed files for spec-001" in result.stdout

@@ -1,6 +1,6 @@
 id: spec-sgm-repo-root-worktree-001
 title: "SGM Repo Root And Worktree Support"
-version: 1
+version: 2
 status: active
 author: paul
 
@@ -17,8 +17,6 @@ governs:
   - selector: "specs/repo-root-worktree-support.sgm.yaml"
     priority: 1
   - selector: "src/sgm/domain/paths.py"
-    priority: 1
-  - selector: "src/sgm/cli.py"
     priority: 1
   - selector: "tests/integration/test_worktree_support.py"
     priority: 1

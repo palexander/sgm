@@ -1,6 +1,6 @@
 id: spec-sgm-validation-focus-001
 title: "SGM Validation and Focus"
-version: 1
+version: 2
 status: active
 author: paul
 
@@ -10,31 +10,25 @@ text: |
   2. When a user targets one spec while the working tree still contains unfinished governed changes under a different spec, `sgm` should push back with a focus warning rather than silently encouraging task drift.
   3. That pushback should default to a warning and explain which other spec still has unfinished work.
   4. The user should be able to override that warning explicitly with `--force` on the affected spec-targeted commands.
-  5. The focus warning should apply to spec-targeted `context` and `validate` only, not repo-wide validation.
-  6. This spec naturally splashes into validation logic, focus-warning rendering, CLI flags, and the tests/docs that exercise scope checking.
+  5. Delegated shared files should validate for the delegate spec when the owner has granted standing access, and valid owner/delegate pairs should not trigger focus warnings for those shared files.
+  6. Coordination files should validate only when the same diff also touches at least one substantive editable file for the active spec.
+  7. The focus warning should apply to spec-targeted `context` and `validate` only, not repo-wide validation.
+  8. This spec naturally splashes into validation logic, focus-warning rendering, Claude hook scope enforcement, and the tests/docs that exercise scope checking.
 
 governs:
   - selector: "specs/validation-and-focus.sgm.yaml"
     priority: 1
-  - selector: "src/sgm/application/context_service.py"
-    priority: 1
   - selector: "src/sgm/application/validation_service.py"
-    priority: 1
-  - selector: "src/sgm/domain/context_models.py"
-    priority: 1
-  - selector: "src/sgm/domain/render_context.py"
     priority: 1
   - selector: "src/sgm/domain/validation_models.py"
     priority: 1
   - selector: "src/sgm/domain/render_validation.py"
     priority: 1
-  - selector: "src/sgm/application/services.py"
+  - selector: "integrations/claude-hooks/bin/_common.py"
     priority: 1
-  - selector: "src/sgm/cli.py"
+  - selector: "integrations/claude-hooks/bin/pretool.py"
     priority: 1
-  - selector: "README.md"
-    priority: 2
-  - selector: "tests/integration/test_cli_smoke.py"
-    priority: 2
+  - selector: "integrations/claude-hooks/bin/posttool.py"
+    priority: 1
   - selector: "tests/integration/test_error_conditions.py"
     priority: 2

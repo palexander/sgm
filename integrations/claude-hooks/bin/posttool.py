@@ -33,10 +33,11 @@ def main() -> int:
     response_text = extract_text(tool_response)
 
     if is_sgm_context_command(command):
-        active_spec_id, governed_files = parse_context_output(response_text)
+        active_spec_id, editable_files, coordination_files = parse_context_output(response_text)
         if active_spec_id:
             state.active_spec_id = active_spec_id
-        state.governed_files = governed_files
+        state.editable_files = editable_files
+        state.coordination_files = coordination_files
         state.last_context_command = command
         save_state(cwd, state)
         return 0
