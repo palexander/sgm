@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -13,7 +14,33 @@ from sgm.domain.proposal_models import (
     ProposalReviewResult,
     RejectResult,
 )
-from tests.integration.helpers import bump_spec_version, create_sample_repo, run_cli
+from tests.integration.helpers import create_sample_repo, rewrite_spec_title, run_cli
+
+
+def _activate_middleware_spec(sample_repo) -> None:
+    sample_repo.middleware_spec_path.write_text(
+        "\n".join(
+            [
+                "id: spec-002",
+                'title: "Middleware Policy"',
+                "status: active",
+                "author: paul",
+                "text: |",
+                "  Middleware changes should stay within middleware files.",
+                "governs:",
+                '  - selector: "src/middleware/**"',
+                "    priority: 1",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "."], cwd=sample_repo.root, check=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "activate middleware spec"],
+        cwd=sample_repo.root,
+        check=True,
+    )
 
 
 def test_cli_spec_first_flow(
@@ -30,6 +57,8 @@ def test_cli_spec_first_flow(
     assert "propose" in no_args_result.stdout
     assert "init" in no_args_result.stdout
     assert "proposals" in no_args_result.stdout
+    assert "shared" in no_args_result.stdout
+    assert "spec" in no_args_result.stdout
     assert "sync" in no_args_result.stdout
     assert "Missing command" not in no_args_result.stderr
 
@@ -40,11 +69,11 @@ def test_cli_spec_first_flow(
         "specs/rpc-service-pattern.sgm.yaml",
     )
     assert context_result.returncode == 0
-    assert "[SPEC] 1 governing" in context_result.stdout
+    assert "[TARGET]" in context_result.stdout
     assert "All changes for this spec must stay within the files governed by it:" in (
         context_result.stdout
     )
-    assert "[FILES] 3 governed" in context_result.stdout
+    assert "[EDITABLE] 3 files" in context_result.stdout
     assert "src/services/discharge.ts" in context_result.stdout
     assert "src/services/bad-handler.ts" in context_result.stdout
     assert "src/services/nested/extra.ts" in context_result.stdout
@@ -57,7 +86,7 @@ def test_cli_spec_first_flow(
         "--no-record",
     )
     assert validate_clean.returncode == 0
-    assert "[VALIDATE] 2 spec(s): 2 pass, 0 warn, 0 fail" in validate_clean.stdout
+    assert "[PASS] no changed files for spec-001" in validate_clean.stdout
 
     discharge_path = sample_repo.root / "src" / "services" / "discharge.ts"
     discharge_path.write_text(
@@ -73,7 +102,7 @@ def test_cli_spec_first_flow(
         "--no-record",
     )
     assert validate_pass.returncode == 0
-    assert "[PASS] all 1 changed file(s) stayed within spec-001" in validate_pass.stdout
+    assert "[PASS] all 1 changed file(s) classified for spec-001" in validate_pass.stdout
     assert "src/services/discharge.ts" in validate_pass.stdout
 
     validate_record = run_cli(
@@ -84,7 +113,7 @@ def test_cli_spec_first_flow(
     )
     assert validate_record.returncode == 0
     assert (
-        "[PASS] all 1 changed file(s) stayed within spec-001 (recorded)"
+        "[PASS] all 1 changed file(s) classified for spec-001 (recorded)"
         in validate_record.stdout
     )
     assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
@@ -103,7 +132,7 @@ def test_cli_spec_first_flow(
         "--no-record",
     )
     assert validate_fail.returncode == 2
-    assert "[FAIL] 1 changed file(s) outside spec-001" in validate_fail.stdout
+    assert "[FAIL] 1 changed file(s) blocked for spec-001" in validate_fail.stdout
     assert "src/middleware/auth.ts" in validate_fail.stdout
 
     propose_result = run_cli(
@@ -134,7 +163,6 @@ def test_cli_spec_first_flow(
     assert validate_warn.returncode == 1
     assert "[WARN] 1 changed file(s) pending governance for spec-001" in validate_warn.stdout
     assert proposal_id in validate_warn.stdout
-    assert "[FOCUS-WARN]" in validate_warn.stdout
 
     approve_result = run_cli(
         sgm_executable,
@@ -153,9 +181,9 @@ def test_cli_spec_first_flow(
         "specs/rpc-service-pattern.sgm.yaml",
     )
     assert governed_context.returncode == 0
-    assert "[FILES] 4 governed" in governed_context.stdout
+    assert "[EDITABLE] 4 files" in governed_context.stdout
     assert "src/middleware/auth.ts" in governed_context.stdout
-    assert "[FOCUS-WARN]" in governed_context.stdout
+    assert "[FOCUS-WARN]" not in governed_context.stdout
 
     governed_context_force = run_cli(
         sgm_executable,
@@ -174,12 +202,9 @@ def test_cli_spec_first_flow(
         "specs/rpc-service-pattern.sgm.yaml",
         "--no-record",
     )
-    assert validate_after_approve.returncode == 1
-    assert (
-        "[WARN] unfinished governed work exists under other spec(s) while targeting spec-001"
-        in validate_after_approve.stdout
-    )
-    assert "[FOCUS-WARN]" in validate_after_approve.stdout
+    assert validate_after_approve.returncode == 0
+    assert "[PASS] all 2 changed file(s) classified for spec-001" in validate_after_approve.stdout
+    assert "[FOCUS-WARN]" not in validate_after_approve.stdout
 
     validate_after_approve_force = run_cli(
         sgm_executable,
@@ -200,7 +225,7 @@ def test_cli_spec_first_flow(
     subprocess.run(["git", "add", "."], cwd=sample_repo.root, check=True)
     subprocess.run(["git", "commit", "-qm", "governed changes"], cwd=sample_repo.root, check=True)
 
-    bump_spec_version(sample_repo.spec_path)
+    rewrite_spec_title(sample_repo.spec_path, "ConnectRPC Service Pattern Revised")
     context_with_delta = run_cli(
         sgm_executable,
         sample_repo.root,
@@ -214,10 +239,10 @@ def test_cli_spec_first_flow(
     assert "[CLEANUP]" not in context_with_delta.stdout
     assert "--- a/specs/rpc-service-pattern.sgm.yaml" in context_with_delta.stdout
     assert "+++ b/specs/rpc-service-pattern.sgm.yaml" in context_with_delta.stdout
-    assert "-version: 1" in context_with_delta.stdout
-    assert "+version: 2" in context_with_delta.stdout
+    assert '-title: "ConnectRPC Service Pattern"' in context_with_delta.stdout
+    assert '+title: "ConnectRPC Service Pattern Revised"' in context_with_delta.stdout
 
-    bump_spec_version(sample_repo.spec_path, version=3)
+    rewrite_spec_title(sample_repo.spec_path, "ConnectRPC Service Pattern Refined")
     validate_with_delta = run_cli(
         sgm_executable,
         sample_repo.root,
@@ -226,14 +251,14 @@ def test_cli_spec_first_flow(
         "--no-record",
     )
     assert validate_with_delta.returncode == 0
-    assert "[PASS] all 1 changed file(s) stayed within spec-001" in validate_with_delta.stdout
+    assert "[PASS] all 1 changed file(s) classified for spec-001" in validate_with_delta.stdout
     assert "[SPEC-DELTA] spec-001 specs/rpc-service-pattern.sgm.yaml changed since last ingest" in (
         validate_with_delta.stdout
     )
     assert "[DELTA-SUMMARY]" in validate_with_delta.stdout
     assert "[CLEANUP]" not in validate_with_delta.stdout
-    assert "-version: 2" in validate_with_delta.stdout
-    assert "+version: 3" in validate_with_delta.stdout
+    assert '-title: "ConnectRPC Service Pattern Revised"' in validate_with_delta.stdout
+    assert '+title: "ConnectRPC Service Pattern Refined"' in validate_with_delta.stdout
 
     sync_decision = run_cli(
         sgm_executable,
@@ -301,6 +326,302 @@ def test_cli_spec_first_flow(
     assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
 
 
+def test_spec_add_creates_template_and_opens_editor(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    editor_log = sample_repo.root / "editor.log"
+    editor_script = sample_repo.root / "fake-editor.sh"
+    editor_script.write_text(
+        "\n".join(
+            [
+                "#!/bin/sh",
+                f"printf '%s\\n' \"$1\" > {editor_log}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    editor_script.chmod(0o755)
+
+    env = os.environ.copy()
+    env["VISUAL"] = str(editor_script)
+    env.pop("EDITOR", None)
+
+    result = subprocess.run(
+        [str(sgm_executable), "spec", "add"],
+        cwd=sample_repo.root,
+        input="  New Command Model  \n",
+        text=True,
+        capture_output=True,
+        check=False,
+        env=env,
+    )
+
+    created_spec = sample_repo.root / "specs" / "new-command-model.sgm.yaml"
+    assert result.returncode == 0
+    assert "[CREATED] specs/new-command-model.sgm.yaml" in result.stdout
+    assert created_spec.is_file()
+    assert editor_log.read_text(encoding="utf-8").strip() == str(created_spec)
+    created_text = created_spec.read_text(encoding="utf-8")
+    assert "id: spec-new-command-model-001" in created_text
+    assert 'title: "New Command Model"' in created_text
+    assert "version:" not in created_text
+    assert "status: active" in created_text
+    assert "author: TODO" in created_text
+    assert "governs: []" in created_text
+
+
+def test_spec_add_refuses_to_overwrite_existing_file(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    existing_spec = sample_repo.root / "specs" / "existing-spec.sgm.yaml"
+    existing_spec.write_text("id: existing\n", encoding="utf-8")
+
+    env = os.environ.copy()
+    env["VISUAL"] = "true"
+    env.pop("EDITOR", None)
+
+    result = subprocess.run(
+        [str(sgm_executable), "spec", "add"],
+        cwd=sample_repo.root,
+        input="Existing Spec\n",
+        text=True,
+        capture_output=True,
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode == 3
+    assert "[ERROR] spec file already exists: specs/existing-spec.sgm.yaml" in result.stdout
+    assert existing_spec.read_text(encoding="utf-8") == "id: existing\n"
+
+
+def test_propose_skips_when_matching_pending_proposal_already_exists(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    auth_path = sample_repo.root / "src" / "middleware" / "auth.ts"
+    auth_path.write_text("export const auth = (): string => 'pending';\n", encoding="utf-8")
+
+    first_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "propose",
+        "spec-001",
+        "src/middleware/auth.ts",
+        "Auth middleware should follow service constraints",
+    )
+    assert first_result.returncode == 0
+    proposal_id = first_result.stdout.splitlines()[0].split()[1]
+
+    second_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "propose",
+        "spec-001",
+        "src/middleware/auth.ts",
+        "Duplicate request should reuse the pending proposal",
+    )
+
+    assert second_result.returncode == 0
+    assert (
+        f"[SKIP] src/middleware/auth.ts already pending under {proposal_id} for spec-001"
+        in second_result.stdout
+    )
+    assert len(tuple((sample_repo.root / ".sgm" / "persisted" / "proposals").glob("*.json"))) == 1
+
+
+def test_parallel_propose_creates_only_one_pending_record_per_target(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    auth_path = sample_repo.root / "src" / "middleware" / "auth.ts"
+    auth_path.write_text("export const auth = (): string => 'pending';\n", encoding="utf-8")
+
+    def run_duplicate_propose(attempt: int) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                str(sgm_executable),
+                "propose",
+                "spec-001",
+                "src/middleware/auth.ts",
+                f"Parallel repro {attempt}",
+            ],
+            cwd=sample_repo.root,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        results = list(executor.map(run_duplicate_propose, range(6)))
+
+    created_results = [result for result in results if "[PROPOSED]" in result.stdout]
+    skipped_results = [result for result in results if "[SKIP]" in result.stdout]
+
+    assert len(created_results) == 1
+    assert len(skipped_results) == 5
+    assert all(result.returncode == 0 for result in results)
+    assert len(tuple((sample_repo.root / ".sgm" / "persisted" / "proposals").glob("*.json"))) == 1
+
+
+def test_propose_blocks_for_files_owned_by_another_active_spec(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    _activate_middleware_spec(sample_repo)
+
+    result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "propose",
+        "spec-001",
+        "src/middleware/auth.ts",
+        "Need auth middleware under the service spec",
+    )
+
+    assert result.returncode == 0
+    assert "[BLOCKED] src/middleware/auth.ts is already owned by spec-002 Middleware Policy" in (
+        result.stdout
+    )
+    assert "sgm shared allow spec-002 spec-001 src/middleware/auth.ts" in result.stdout
+    assert not tuple((sample_repo.root / ".sgm" / "persisted" / "proposals").glob("*.json"))
+
+
+def test_shared_allow_surfaces_owner_context_and_validate_passes(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    _activate_middleware_spec(sample_repo)
+
+    allow_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "shared",
+        "allow",
+        "spec-002",
+        "spec-001",
+        "src/middleware/auth.ts",
+        "Shared auth work",
+    )
+    assert allow_result.returncode == 0
+    assert "[ALLOWED] delegation-" in allow_result.stdout
+    assert "ownership: unchanged" in allow_result.stdout
+    assert tuple((sample_repo.root / ".sgm" / "persisted" / "delegations").glob("*.json"))
+
+    list_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "shared",
+        "list",
+        "specs/rpc-service-pattern.sgm.yaml",
+    )
+    assert "[DELEGATED-TO-THIS-SPEC] 1" in list_result.stdout
+    assert "src/middleware/auth.ts <- spec-002" in list_result.stdout
+
+    context_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "context",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--force",
+    )
+    assert "[READ] 2 specs" in context_result.stdout
+    assert "spec-002 [owner for src/middleware/auth.ts]" in context_result.stdout
+    assert "If it disagrees, the owner wins." in context_result.stdout
+    assert "[EDITABLE] 4 files" in context_result.stdout
+    assert "src/middleware/auth.ts" in context_result.stdout
+
+    auth_path = sample_repo.root / "src" / "middleware" / "auth.ts"
+    auth_path.write_text("export const auth = (): string => 'shared';\n", encoding="utf-8")
+
+    validate_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--no-record",
+    )
+    assert validate_result.returncode == 0
+    assert "[PASS] all 1 changed file(s) classified for spec-001" in validate_result.stdout
+    assert "src/middleware/auth.ts" in validate_result.stdout
+    assert "[FOCUS-WARN]" not in validate_result.stdout
+
+
+def test_coordination_files_require_substantive_edit(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    _activate_middleware_spec(sample_repo)
+
+    mark_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "shared",
+        "mark-coordination",
+        "spec-002",
+        "src/middleware/auth.ts",
+        "Wiring spillover",
+    )
+    assert mark_result.returncode == 0
+    assert "[COORDINATION] coordination-" in mark_result.stdout
+    assert tuple((sample_repo.root / ".sgm" / "persisted" / "coordination").glob("*.json"))
+
+    context_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "context",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--force",
+    )
+    assert "[COORDINATION] 1 files" in context_result.stdout
+    assert "src/middleware/auth.ts <- spec-002" in context_result.stdout
+
+    auth_path = sample_repo.root / "src" / "middleware" / "auth.ts"
+    auth_path.write_text("export const auth = (): string => 'coord';\n", encoding="utf-8")
+
+    validate_only_coordination = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--no-record",
+    )
+    assert validate_only_coordination.returncode == 2
+    assert "coordination files are only allowed alongside a substantive editable change" in (
+        validate_only_coordination.stdout
+    )
+
+    discharge_path = sample_repo.root / "src" / "services" / "discharge.ts"
+    discharge_path.write_text(
+        "export const handler = (): string => 'updated';\n",
+        encoding="utf-8",
+    )
+
+    validate_with_substantive = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--no-record",
+    )
+    assert validate_with_substantive.returncode == 0
+    assert "[NOTES]" in validate_with_substantive.stdout
+    assert "coordination spillover allowed because this change also touches a substantive editable file" in (
+        validate_with_substantive.stdout
+    )
+    assert "[FOCUS-WARN]" not in validate_with_substantive.stdout
+
+
 def test_validate_no_record_leaves_recorded_state_unchanged(
     tmp_path: Path,
     sgm_executable: Path,
@@ -323,7 +644,7 @@ def test_validate_no_record_leaves_recorded_state_unchanged(
         "context",
         "specs/rpc-service-pattern.sgm.yaml",
     )
-    assert "[FILES] 3 governed" in context_result.stdout
+    assert "[EDITABLE] 3 files" in context_result.stdout
 
 
 def test_proposals_review_walks_pending_items_in_order(
@@ -593,7 +914,7 @@ def test_context_uses_git_diff_when_no_local_spec_snapshot_exists(
 ) -> None:
     sample_repo = create_sample_repo(tmp_path)
 
-    bump_spec_version(sample_repo.spec_path)
+    rewrite_spec_title(sample_repo.spec_path, "ConnectRPC Service Pattern Revised")
 
     context_result = run_cli(
         sgm_executable,
@@ -609,8 +930,8 @@ def test_context_uses_git_diff_when_no_local_spec_snapshot_exists(
     )
     assert "--- a/specs/rpc-service-pattern.sgm.yaml" in context_result.stdout
     assert "+++ b/specs/rpc-service-pattern.sgm.yaml" in context_result.stdout
-    assert "-version: 1" in context_result.stdout
-    assert "+version: 2" in context_result.stdout
+    assert '-title: "ConnectRPC Service Pattern"' in context_result.stdout
+    assert '+title: "ConnectRPC Service Pattern Revised"' in context_result.stdout
 
 
 def test_spec_targeted_commands_warn_about_other_unfinished_spec_work(
@@ -624,7 +945,6 @@ def test_spec_targeted_commands_warn_about_other_unfinished_spec_work(
             [
                 "id: spec-002",
                 'title: "Middleware Pattern"',
-                "version: 1",
                 "status: active",
                 "author: paul",
                 "text: |",

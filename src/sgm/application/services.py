@@ -12,11 +12,16 @@ from sgm.application.validation_service import ValidationService
 from sgm.domain.models import (
     ApprovalResult,
     InitResult,
+    CoordinationMarkResult,
+    CoordinationUnmarkResult,
     ProposalListResult,
     ProposalStatus,
     ProposeResult,
     RejectResult,
     RepoContext,
+    SharedAllowResult,
+    SharedListResult,
+    SharedRevokeResult,
     SpecContextResponse,
     SyncDecisionResult,
     SyncFilesResult,
@@ -66,6 +71,65 @@ class SgmService:
             reason=reason,
         )
 
+    def shared_allow(
+        self,
+        owner_spec_id: str,
+        delegate_spec_id: str,
+        raw_path: str,
+        reason: str,
+    ) -> SharedAllowResult:
+        path: str = to_repo_relative_posix(self.repo_context.root, raw_path)
+        return self.graph_repository.create_delegation(
+            owner_spec_id=owner_spec_id,
+            delegate_spec_id=delegate_spec_id,
+            path=path,
+            reason=reason,
+        )
+
+    def shared_revoke(
+        self,
+        owner_spec_id: str,
+        delegate_spec_id: str,
+        raw_path: str,
+    ) -> SharedRevokeResult:
+        path: str = to_repo_relative_posix(self.repo_context.root, raw_path)
+        return self.graph_repository.revoke_delegation(
+            owner_spec_id=owner_spec_id,
+            delegate_spec_id=delegate_spec_id,
+            path=path,
+        )
+
+    def shared_mark_coordination(
+        self,
+        owner_spec_id: str,
+        raw_path: str,
+        reason: str,
+    ) -> CoordinationMarkResult:
+        path: str = to_repo_relative_posix(self.repo_context.root, raw_path)
+        return self.graph_repository.mark_coordination(
+            owner_spec_id=owner_spec_id,
+            path=path,
+            reason=reason,
+        )
+
+    def shared_unmark_coordination(
+        self,
+        owner_spec_id: str,
+        raw_path: str,
+    ) -> CoordinationUnmarkResult:
+        path: str = to_repo_relative_posix(self.repo_context.root, raw_path)
+        return self.graph_repository.unmark_coordination(
+            owner_spec_id=owner_spec_id,
+            path=path,
+        )
+
+    def shared_list(self, query: str) -> SharedListResult:
+        normalized_query = query
+        target_path = self.repo_context.root / query
+        if target_path.exists():
+            normalized_query = to_repo_relative_posix(self.repo_context.root, target_path)
+        return self.graph_repository.list_shared(normalized_query)
+
     def proposals_list(self, status: ProposalStatus | None) -> ProposalListResult:
         return self.graph_repository.list_proposals(status)
 
@@ -78,7 +142,7 @@ class SgmService:
                     proposal=proposal,
                     spec_title=context.spec.title,
                     spec_text=context.spec.text,
-                    governed_files=context.governed_files,
+                    governed_files=context.editable_files,
                 )
             )
         return ProposalReviewResult(proposals=tuple(review_items))

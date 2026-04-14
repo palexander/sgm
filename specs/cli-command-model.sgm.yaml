@@ -1,6 +1,6 @@
 id: spec-sgm-cli-command-model-001
 title: "SGM CLI Command Model"
-version: 1
+version: 3
 status: active
 author: paul
 
@@ -13,7 +13,17 @@ text: |
   5. `sgm sync` remains a debug and rebuild tool, not a normal prerequisite.
   6. Repo guidance should not tell humans or agents to add a separate persistence step to the normal loop when proposal state is already durable.
   7. During implementation, agents should not edit spec files directly; incidental splash expansion should go through `sgm propose` instead.
-  8. This spec naturally splashes into the CLI/help surface, orchestration guidance, and docs/tests that explain the shared command model.
+  8. `sgm` may expose grouped subcommands when they keep related workflows together without splitting the shared CLI into separate tools.
+  9. `sgm spec` is the spec-authoring command group for operations that create or manage spec documents.
+  10. The first subcommand under that group is `sgm spec add`.
+  11. `sgm spec add` prompts the user for a spec name, trims surrounding whitespace, and refuses to continue until the name can produce a non-empty spec slug.
+  12. The command derives a lowercase kebab-case slug from that name, writes a new file at `specs/{slug}.sgm.yaml`, and refuses to overwrite an existing file.
+  13. After writing the new scaffold successfully, the command opens that exact file in an editor so the user can continue authoring immediately.
+  14. Editor selection should follow normal terminal expectations by honoring `VISUAL` first, then `EDITOR`, and surfacing a clear error when no editor can be resolved.
+  15. `sgm shared` is the shared-governance command group for owner/delegate and coordination workflows.
+  16. That group includes `allow`, `revoke`, `mark-coordination`, `unmark-coordination`, and `list`.
+  17. `sgm propose` is only for ownership expansion of an unowned file, not for borrowing a file already owned by another spec.
+  18. This spec naturally splashes into the CLI/help surface, orchestration guidance, and docs/tests that explain the shared command model.
 
 governs:
   - selector: "specs/cli-command-model.sgm.yaml"
@@ -25,8 +35,6 @@ governs:
   - selector: "src/sgm/domain/render_commands.py"
     priority: 1
   - selector: "README.md"
-    priority: 2
-  - selector: "AGENTS.md"
     priority: 2
   - selector: "tests/integration/test_cli_smoke.py"
     priority: 2

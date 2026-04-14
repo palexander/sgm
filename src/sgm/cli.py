@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import json
+import os
+import re
+import shlex
 import shutil
+import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -25,24 +30,33 @@ from sgm.domain.errors import (
 from sgm.domain.models import ExitCode, ProposalStatus
 from sgm.domain.paths import ensure_repo_root
 from sgm.domain.proposal_models import ProposalReviewItem
-from sgm.domain.render_shared import render_proposal_review
 from sgm.domain.renderers import (
     render_approval,
+    render_coordination_mark,
+    render_coordination_unmark,
     render_context,
     render_init,
     render_proposals,
     render_propose,
     render_rejection,
+    render_shared_allow,
+    render_shared_list,
+    render_shared_revoke,
     render_sync_decision,
     render_sync_files,
     render_sync_spec,
     render_validation,
 )
+from sgm.domain.render_commands import render_proposal_review
 
 app = typer.Typer(help="Shared SGM CLI for humans and agents.")
 proposals_app = typer.Typer(help="Review and manage governance proposals.")
+spec_app = typer.Typer(help="Author and manage spec documents.")
+shared_app = typer.Typer(help="Manage shared governance delegation and coordination.")
 sync_app = typer.Typer(help="Refresh derived graph state from repo sources.")
 app.add_typer(proposals_app, name="proposals")
+app.add_typer(spec_app, name="spec")
+app.add_typer(shared_app, name="shared")
 app.add_typer(sync_app, name="sync")
 
 
@@ -125,17 +139,132 @@ def _validate(service: SgmService, spec: str | None, record: bool, force: bool) 
     return 0
 
 
-@app.command(help="Propose governance for an ungoverned repo-relative path.")
+@app.command(help="Propose ownership expansion for an ungoverned repo-relative path.")
 def propose(
     spec_id: Annotated[str, typer.Argument(help="Spec identifier.")],
-    path: Annotated[str, typer.Argument(help="Repo-relative path to govern.")],
-    reason: Annotated[str, typer.Argument(help="Why this file should be governed.")],
+    path: Annotated[str, typer.Argument(help="Repo-relative path to make owned by this spec.")],
+    reason: Annotated[str, typer.Argument(help="Why ownership should expand to this file.")],
 ) -> None:
     _run_command(lambda service: _propose(service, spec_id, path, reason))
 
 
 def _propose(service: SgmService, spec_id: str, path: str, reason: str) -> ExitCode:
     typer.echo(render_propose(service.propose(spec_id, path, reason)))
+    return 0
+
+
+@shared_app.command("allow", help="Record standing delegated access to an owner-owned file.")
+def shared_allow(
+    owner_spec_id: Annotated[str, typer.Argument(help="Owning spec identifier.")],
+    delegate_spec_id: Annotated[str, typer.Argument(help="Delegate spec identifier.")],
+    path: Annotated[str, typer.Argument(help="Repo-relative owned file path.")],
+    reason: Annotated[str, typer.Argument(help="Why this delegated access is allowed.")],
+) -> None:
+    _run_command(
+        lambda service: _shared_allow(service, owner_spec_id, delegate_spec_id, path, reason)
+    )
+
+
+def _shared_allow(
+    service: SgmService,
+    owner_spec_id: str,
+    delegate_spec_id: str,
+    path: str,
+    reason: str,
+) -> ExitCode:
+    typer.echo(
+        render_shared_allow(
+            service.shared_allow(owner_spec_id, delegate_spec_id, path, reason)
+        )
+    )
+    return 0
+
+
+@shared_app.command("revoke", help="Revoke delegated access to an owner-owned file.")
+def shared_revoke(
+    owner_spec_id: Annotated[str, typer.Argument(help="Owning spec identifier.")],
+    delegate_spec_id: Annotated[str, typer.Argument(help="Delegate spec identifier.")],
+    path: Annotated[str, typer.Argument(help="Repo-relative owned file path.")],
+) -> None:
+    _run_command(lambda service: _shared_revoke(service, owner_spec_id, delegate_spec_id, path))
+
+
+def _shared_revoke(
+    service: SgmService,
+    owner_spec_id: str,
+    delegate_spec_id: str,
+    path: str,
+) -> ExitCode:
+    typer.echo(
+        render_shared_revoke(
+            service.shared_revoke(owner_spec_id, delegate_spec_id, path)
+        )
+    )
+    return 0
+
+
+@shared_app.command(
+    "mark-coordination",
+    help="Mark an owner-owned file as coordination spillover for follow-through edits.",
+)
+def shared_mark_coordination(
+    owner_spec_id: Annotated[str, typer.Argument(help="Owning spec identifier.")],
+    path: Annotated[str, typer.Argument(help="Repo-relative owned file path.")],
+    reason: Annotated[str, typer.Argument(help="Why this file is coordination spillover.")],
+) -> None:
+    _run_command(lambda service: _shared_mark_coordination(service, owner_spec_id, path, reason))
+
+
+def _shared_mark_coordination(
+    service: SgmService,
+    owner_spec_id: str,
+    path: str,
+    reason: str,
+) -> ExitCode:
+    typer.echo(
+        render_coordination_mark(
+            service.shared_mark_coordination(owner_spec_id, path, reason)
+        )
+    )
+    return 0
+
+
+@shared_app.command(
+    "unmark-coordination",
+    help="Remove coordination spillover status from an owner-owned file.",
+)
+def shared_unmark_coordination(
+    owner_spec_id: Annotated[str, typer.Argument(help="Owning spec identifier.")],
+    path: Annotated[str, typer.Argument(help="Repo-relative owned file path.")],
+) -> None:
+    _run_command(lambda service: _shared_unmark_coordination(service, owner_spec_id, path))
+
+
+def _shared_unmark_coordination(
+    service: SgmService,
+    owner_spec_id: str,
+    path: str,
+) -> ExitCode:
+    typer.echo(
+        render_coordination_unmark(
+            service.shared_unmark_coordination(owner_spec_id, path)
+        )
+    )
+    return 0
+
+
+@shared_app.command("list", help="Show active delegation and coordination records.")
+def shared_list(
+    query: Annotated[
+        str,
+        typer.Argument(help="Spec id, spec path, unique spec filename, or repo-relative file path."),
+    ],
+) -> None:
+    _run_command(lambda service: _shared_list(service, query))
+
+
+def _shared_list(service: SgmService, query: str) -> ExitCode:
+    typer.echo(render_shared_list(service.shared_list(query)))
     return 0
 
 
@@ -147,6 +276,72 @@ def init() -> None:
 def _init(service: SgmService) -> ExitCode:
     typer.echo(render_init(service.init()))
     return 0
+
+
+@spec_app.command("add", help="Create a new spec file from a base template and open it.")
+def spec_add() -> None:
+    _run_command(_spec_add, auto_refresh=False)
+
+
+def _spec_add(service: SgmService) -> ExitCode:
+    spec_name = _prompt_spec_name()
+    slug = _spec_slug(spec_name)
+    spec_path = service.repo_context.root / "specs" / f"{slug}.sgm.yaml"
+    repo_relative_path = spec_path.relative_to(service.repo_context.root).as_posix()
+    if spec_path.exists():
+        raise SgmError(f"spec file already exists: {repo_relative_path}")
+    spec_path.parent.mkdir(parents=True, exist_ok=True)
+    spec_path.write_text(_spec_template(spec_name, slug), encoding="utf-8")
+    _open_editor(spec_path)
+    typer.echo(f"[CREATED] {repo_relative_path}")
+    return 0
+
+
+def _prompt_spec_name() -> str:
+    while True:
+        spec_name = typer.prompt("Spec name").strip()
+        if _spec_slug(spec_name) != "":
+            return spec_name
+        typer.echo("[ERROR] spec name must produce a non-empty slug")
+
+
+def _spec_slug(spec_name: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "-", spec_name.strip().lower())
+    return normalized.strip("-")
+
+
+def _spec_template(spec_name: str, slug: str) -> str:
+    title_literal = json.dumps(spec_name)
+    return (
+        f"id: spec-{slug}-001\n"
+        f"title: {title_literal}\n"
+        "status: active\n"
+        "author: TODO\n"
+        "text: |\n"
+        "  Describe the behavior this spec governs.\n"
+        "governs: []\n"
+    )
+
+
+def _open_editor(path: Path) -> None:
+    editor_command = _editor_command()
+    try:
+        subprocess.run([*editor_command, str(path)], check=True)
+    except OSError as error:
+        raise InfrastructureError(f"failed to open editor: {error}") from error
+    except subprocess.CalledProcessError as error:
+        raise InfrastructureError(f"editor exited with status {error.returncode}") from error
+
+
+def _editor_command() -> list[str]:
+    for variable_name in ("VISUAL", "EDITOR"):
+        configured_editor = os.environ.get(variable_name, "").strip()
+        if configured_editor == "":
+            continue
+        command = shlex.split(configured_editor)
+        if command:
+            return command
+    raise InfrastructureError("no editor configured; set VISUAL or EDITOR")
 
 
 @proposals_app.command("list", help="List governance proposals.")
