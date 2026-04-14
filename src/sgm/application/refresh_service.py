@@ -41,6 +41,7 @@ class RefreshService:
             )
             self.graph_repository.sync_decision(decision)
         self.graph_repository.prune_decisions(decision_paths)
+        self.graph_repository.assert_unique_active_ownership()
 
     def sync_files(self, scan_root: str | None) -> SyncFilesResult:
         normalized_root: str = normalize_scan_root(self.repo_context.root, scan_root)

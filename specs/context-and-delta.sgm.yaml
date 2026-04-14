@@ -1,6 +1,6 @@
 id: spec-sgm-context-delta-001
 title: "SGM Context and Delta"
-version: 1
+version: 2
 status: active
 author: paul
 
@@ -15,8 +15,11 @@ text: |
   7. `sgm context` should add a short `[DELTA-SUMMARY]` ahead of the raw diff so agents can quickly see whether behavior was added, removed, or otherwise changed.
   8. If the diff removes behavior, `sgm context` should emit an explicit `[CLEANUP]` nudge telling the agent to remove or isolate obsolete code, tests, and docs rather than keeping parallel implementations by default.
   9. Discovery should be affirmative: spec files come only from `specs/**/*.sgm.yaml`, decisions only from `decisions/**/*.yaml`, and governed-file matching should use a Git-backed repo inventory rather than recursive filesystem walks of the whole repo.
-  10. `sgm context` also surfaces active `[DECISIONS]` that inform the governed file set.
-  11. This spec naturally splashes into context rendering, spec delta logic, Git-backed discovery and repo inventory, and the tests/docs that describe the context-first workflow.
+  10. `sgm context` also surfaces active `[DECISIONS]` that inform the editable and coordination file sets.
+  11. Its default brief should be self-contained, with `[TARGET]`, `[READ]`, `[EDITABLE]`, `[COORDINATION]`, and `[NEXT]` sections.
+  12. When a file is delegated from an owner spec, `[READ]` should include the owner spec before the active task spec and explain that the owner wins for that shared file.
+  13. Coordination files should be listed explicitly without requiring the owner spec to be read by default.
+  14. This spec naturally splashes into context rendering, spec delta logic, Git-backed discovery and repo inventory, and the tests/docs that describe the context-first workflow.
 
 governs:
   - selector: "specs/context-and-delta.sgm.yaml"
@@ -26,8 +29,6 @@ governs:
   - selector: "src/sgm/application/refresh_service.py"
     priority: 1
   - selector: "src/sgm/adapters/filesystem.py"
-    priority: 1
-  - selector: "src/sgm/adapters/repository.py"
     priority: 1
   - selector: "src/sgm/adapters/system.py"
     priority: 1
@@ -41,16 +42,6 @@ governs:
     priority: 1
   - selector: "src/sgm/domain/spec_models.py"
     priority: 1
-  - selector: "src/sgm/application/services.py"
-    priority: 1
-  - selector: "src/sgm/cli.py"
-    priority: 1
-  - selector: "README.md"
-    priority: 2
-  - selector: "AGENTS.md"
-    priority: 2
-  - selector: "tests/integration/test_cli_smoke.py"
-    priority: 2
   - selector: "tests/unit/test_filesystem.py"
     priority: 2
   - selector: "tests/unit/test_spec_deltas.py"
