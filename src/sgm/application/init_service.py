@@ -17,6 +17,16 @@ SPEC_EDIT_GUIDANCE_LINE = (
 PROPOSAL_GUIDANCE_LINE = (
     "Proposal records are durable immediately in `.sgm/persisted/proposals/`."
 )
+UNOWNED_GUIDANCE_LINE = (
+    'If a touched file is unowned: `sgm propose <spec-id> <path> "<reason>"`.'
+)
+FOREIGN_OWNER_GUIDANCE_LINE = (
+    'If another spec owns the file: ask a human, then record `sgm shared allow <owner-spec-id> <spec-id> <path> "<reason>"`.'
+)
+OWNER_WINS_GUIDANCE_LINE = "On delegated shared files, the owner spec wins."
+COORDINATION_GUIDANCE_LINE = (
+    "Coordination files are only for mechanical follow-through alongside substantive editable work."
+)
 SPEC_SELECTION_GUIDANCE_LINE = (
     "Use the narrower behavior spec that matches the work: command model, "
     "context and delta, validation and focus, persistence, init, or spec format."
@@ -80,11 +90,14 @@ class InitService:
             r"(?:- Do not edit spec files directly during implementation; use "
             r"`sgm propose` for incidental splash expansion\.\n)?"
             r"(?:- Proposal records are durable immediately in `\.sgm/persisted/proposals/`\.\n)?"
+            r'(?:- If a touched file is unowned: `(?:uv run )?sgm propose <spec-id> <path> "<reason>"`\.\n)?'
+            r'(?:- If another spec owns the file: ask a human, then record `(?:uv run )?sgm shared allow <owner-spec-id> <spec-id> <path> "<reason>"`\.\n)?'
+            r"(?:- On delegated shared files, the owner spec wins\.\n)?"
+            r"(?:- Coordination files are only for mechanical follow-through alongside substantive editable work\.\n)?"
             r"- Before edits: `(?:uv run )?sgm context <spec-file-or-id>`\n"
             r"- After edits: `(?:uv run )?sgm validate(?: <spec-file-or-id>)?`\n"
             r"- Dry run only: `(?:uv run )?sgm validate(?: <spec-file-or-id>)? --no-record`\n"
-            r"- If a touched file is ungoverned: `(?:uv run )?sgm propose "
-            r"<spec-id> <path> \"<reason>\"`\n?"
+            r'(?:- If a touched file is ungoverned: `(?:uv run )?sgm propose <spec-id> <path> "<reason>"`\n?)?'
         )
         return self._ensure_patterned_block(
             path="AGENTS.md",
@@ -113,10 +126,13 @@ class InitService:
                 f"- {AGENTS_GUIDANCE_LINE}",
                 f"- {SPEC_EDIT_GUIDANCE_LINE}",
                 f"- {PROPOSAL_GUIDANCE_LINE}",
+                f"- {UNOWNED_GUIDANCE_LINE}",
+                f"- {FOREIGN_OWNER_GUIDANCE_LINE}",
+                f"- {OWNER_WINS_GUIDANCE_LINE}",
+                f"- {COORDINATION_GUIDANCE_LINE}",
                 "- Before edits: `sgm context <spec-file-or-id>`",
                 "- After edits: `sgm validate`",
                 "- Dry run only: `sgm validate --no-record`",
-                '- If a touched file is ungoverned: `sgm propose <spec-id> <path> "<reason>"`',
             ]
         )
 
@@ -129,6 +145,13 @@ class InitService:
                 "",
                 "- Use the narrower behavior spec that matches the work",
                 "- `sgm context <spec-file-or-id>` before edits",
+                '- If a file is unowned, use `sgm propose <spec-id> <path> "<reason>"`',
+                (
+                    "- If another spec owns the file, ask a human and record "
+                    '`sgm shared allow <owner-spec-id> <spec-id> <path> "<reason>"`'
+                ),
+                "- On delegated shared files, the owner spec wins",
+                "- Coordination files are only for follow-through alongside substantive editable work",
                 "- `sgm validate` after edits",
                 "- Prefer modules that align with a single spec concern when practical",
                 (

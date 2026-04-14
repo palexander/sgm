@@ -13,6 +13,15 @@ SPEC_SELECTION_GUIDANCE = (
     "Use the narrower behavior spec that matches the work: command model, "
     "context and delta, validation and focus, persistence, init, or spec format."
 )
+UNOWNED_GUIDANCE = 'If a touched file is unowned: `sgm propose <spec-id> <path> "<reason>"`.'
+FOREIGN_OWNER_GUIDANCE = (
+    'If another spec owns the file: ask a human, then record `sgm shared allow '
+    '<owner-spec-id> <spec-id> <path> "<reason>"`.'
+)
+OWNER_WINS_GUIDANCE = "On delegated shared files, the owner spec wins."
+COORDINATION_GUIDANCE = (
+    "Coordination files are only for mechanical follow-through alongside substantive editable work."
+)
 
 
 def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Path) -> None:
@@ -52,6 +61,10 @@ def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Pat
     assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`." in (
         agents_text
     )
+    assert UNOWNED_GUIDANCE in agents_text
+    assert FOREIGN_OWNER_GUIDANCE in agents_text
+    assert OWNER_WINS_GUIDANCE in agents_text
+    assert COORDINATION_GUIDANCE in agents_text
     assert "sgm context <spec-file-or-id>" in agents_text
     assert "sgm validate" in agents_text
     assert "sgm persist" not in agents_text
@@ -88,6 +101,9 @@ def test_init_updates_existing_claude_md(tmp_path: Path, sgm_executable: Path) -
     assert "sgm context <spec-file-or-id>" in claude_text
     assert "Use the narrower behavior spec that matches the work" in claude_text
     assert "- `sgm validate` after edits" in claude_text
+    assert "`sgm shared allow <owner-spec-id> <spec-id> <path> \"<reason>\"`" in claude_text
+    assert "owner spec wins" in claude_text
+    assert "Coordination files are only for follow-through" in claude_text
     assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`" in (
         claude_text
     )
@@ -112,7 +128,7 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
                 "- After edits: `uv run sgm validate`",
                 "- Dry run only: `uv run sgm validate --no-record`",
                 (
-                    '- If a touched file is ungoverned: `uv run sgm propose '
+                    '- If a touched file is unowned: `uv run sgm propose '
                     '<spec-id> <path> "<reason>"`'
                 ),
                 "",
@@ -146,6 +162,10 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
         in agents_text
     )
     assert "Proposal records are durable immediately" in agents_text
+    assert UNOWNED_GUIDANCE in agents_text
+    assert FOREIGN_OWNER_GUIDANCE in agents_text
+    assert OWNER_WINS_GUIDANCE in agents_text
+    assert COORDINATION_GUIDANCE in agents_text
     assert "`sgm context <spec-file-or-id>`" in agents_text
     assert "`sgm validate`" in agents_text
     assert "`uv run sgm context <spec-file-or-id>`" not in agents_text
@@ -171,6 +191,9 @@ def test_init_rewrites_stale_claude_section(tmp_path: Path, sgm_executable: Path
     assert "Use `sgm` before and after governed edits:" in claude_text
     assert "Use the narrower behavior spec that matches the work" in claude_text
     assert "- `sgm validate` after edits" in claude_text
+    assert "`sgm shared allow <owner-spec-id> <spec-id> <path> \"<reason>\"`" in claude_text
+    assert "owner spec wins" in claude_text
+    assert "Coordination files are only for follow-through" in claude_text
     assert (
         "- Do not edit spec files directly during implementation; use `sgm propose`"
         in claude_text

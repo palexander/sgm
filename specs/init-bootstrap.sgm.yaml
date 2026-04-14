@@ -1,6 +1,6 @@
 id: spec-sgm-init-001
 title: "SGM Init Bootstrap"
-version: 1
+version: 2
 status: active
 author: paul
 
@@ -16,22 +16,17 @@ text: |
   8. Generated guidance should tell agents not to edit spec files directly during implementation; incidental splash expansion should go through `sgm propose`.
   9. It should also keep common local artifact noise such as Python cache directories out of Git.
   10. Generated guidance should steer users toward the narrower behavior specs instead of the retired umbrella workflow spec.
-  11. This spec naturally splashes into the init command, filesystem scaffolding, the repo guidance docs it updates, and the init-focused tests that exercise that behavior.
+  11. Generated guidance should explain the shared-governance loop compactly: run `sgm context`, use `sgm propose` for unowned files, ask a human plus `sgm shared allow` for owner-owned files, let the owner win on delegated files, treat coordination files as follow-through, then run `sgm validate`.
+  12. This spec naturally splashes into the init command, filesystem scaffolding, the repo guidance docs it updates, and the init-focused tests that exercise that behavior.
 
 governs:
   - selector: "specs/init-bootstrap.sgm.yaml"
     priority: 1
   - selector: ".gitignore"
     priority: 1
-  - selector: "src/sgm/cli.py"
-    priority: 1
   - selector: "src/sgm/application/init_service.py"
     priority: 1
-  - selector: "src/sgm/adapters/filesystem.py"
+  - selector: "AGENTS.md"
     priority: 1
   - selector: "tests/integration/test_init.py"
     priority: 1
-  - selector: "README.md"
-    priority: 2
-  - selector: "AGENTS.md"
-    priority: 2
