@@ -1,6 +1,6 @@
 id: spec-sgm-persistence-001
 title: "SGM Persistence Artifacts"
-version: 1
+version: 2
 status: active
 author: paul
 
@@ -9,29 +9,20 @@ text: |
   1. Checked-in artifacts are durable, reviewable sources of truth such as specs, decisions, and other per-item governance files.
   2. High-churn runtime state such as caches, indexes, locks, and per-run records stays out of Git in local `.sgm/work/` storage.
   3. Durable proposal records intended to survive code review are written directly into `.sgm/persisted/proposals/` when proposal state changes, rather than waiting for a later manual handoff.
-  4. Validation runs remain working-state records under `.sgm/work/validations/` and should not be promoted into durable Git-facing storage by default.
-  5. Shared history should prefer append-only or file-per-item artifacts over a single mutable state file.
-  6. Derived summaries may be cached locally, but they must remain reconstructible from checked-in artifacts plus persisted proposal records plus current repo state.
-  7. Multi-user use should avoid commit collisions by separating declarative repo state from operational runtime state.
-  8. Normal proposal creation and review should not rely on any separate persistence command; proposal state is already durable when it is created, approved, or rejected.
-  9. This spec naturally splashes into proposal governance, the repository and filesystem storage code, and the smoke/error tests that exercise the state lifecycle.
+  4. Standing shared-governance records are also durable state: delegations live in `.sgm/persisted/delegations/`, coordination records live in `.sgm/persisted/coordination/`, and both remain active until explicitly revoked.
+  5. Validation runs remain working-state records under `.sgm/work/validations/` and should not be promoted into durable Git-facing storage by default.
+  6. Shared history should prefer append-only or file-per-item artifacts over a single mutable state file.
+  7. Derived summaries may be cached locally, but they must remain reconstructible from checked-in artifacts plus persisted shared-governance records plus current repo state.
+  8. Multi-user use should avoid commit collisions by separating declarative repo state from operational runtime state.
+  9. Normal proposal creation and review should not rely on any separate persistence command; proposal state is already durable when it is created, approved, or rejected.
+  10. This spec naturally splashes into proposal governance, shared-governance persistence, the repository storage code, and the tests that exercise that state lifecycle.
 
 governs:
   - selector: "specs/persistence-artifacts.sgm.yaml"
     priority: 1
-  - selector: "src/sgm/cli.py"
-    priority: 1
-  - selector: "src/sgm/application/services.py"
-    priority: 1
   - selector: "src/sgm/adapters/repository.py"
     priority: 1
-  - selector: "src/sgm/domain/render_commands.py"
+  - selector: "src/sgm/domain/core_models.py"
     priority: 1
-  - selector: "tests/integration/test_cli_smoke.py"
+  - selector: "src/sgm/domain/proposal_models.py"
     priority: 1
-  - selector: "tests/integration/test_error_conditions.py"
-    priority: 1
-  - selector: "README.md"
-    priority: 2
-  - selector: "AGENTS.md"
-    priority: 2

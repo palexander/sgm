@@ -1,16 +1,27 @@
 from __future__ import annotations
 
+import hashlib
 import json
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, cast
 from uuid import uuid4
 
-from sgm.domain.errors import EntityNotFoundError, InfrastructureError
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - advisory locking is unavailable on Windows.
+    fcntl = None
+
+from sgm.domain.errors import EntityNotFoundError, InfrastructureError, SpecValidationError
 from sgm.domain.models import (
     ApprovalResult,
     CodeNode,
+    Coordination,
+    CoordinationMarkResult,
+    CoordinationUnmarkResult,
+    Delegation,
     DecisionDocument,
     DecisionStatus,
     GoverningSpec,
@@ -19,6 +30,10 @@ from sgm.domain.models import (
     ProposalStatus,
     ProposeResult,
     RejectResult,
+    SharedAllowResult,
+    SharedListResult,
+    SharedRevokeResult,
+    ReadRequirement,
     RelatedDecision,
     SpecContextResponse,
     SpecDocument,
@@ -37,7 +52,9 @@ class GraphRepository(Protocol):
     def prune_specs(self, source_paths: tuple[str, ...]) -> None: ...
     def prune_decisions(self, source_paths: tuple[str, ...]) -> None: ...
     def list_active_specs(self) -> tuple[str, ...]: ...
+    def assert_unique_active_ownership(self) -> None: ...
     def get_context(self, spec_ref: str) -> SpecContextResponse: ...
+    def owner_for_path(self, path: str) -> tuple[str, str, str] | None: ...
     def record_validation(
         self,
         spec_id: str,
@@ -53,6 +70,31 @@ class GraphRepository(Protocol):
         path: str,
         reason: str,
     ) -> ProposeResult: ...
+    def create_delegation(
+        self,
+        owner_spec_id: str,
+        delegate_spec_id: str,
+        path: str,
+        reason: str,
+    ) -> SharedAllowResult: ...
+    def revoke_delegation(
+        self,
+        owner_spec_id: str,
+        delegate_spec_id: str,
+        path: str,
+    ) -> SharedRevokeResult: ...
+    def mark_coordination(
+        self,
+        owner_spec_id: str,
+        path: str,
+        reason: str,
+    ) -> CoordinationMarkResult: ...
+    def unmark_coordination(
+        self,
+        owner_spec_id: str,
+        path: str,
+    ) -> CoordinationUnmarkResult: ...
+    def list_shared(self, query: str) -> SharedListResult: ...
     def list_proposals(self, status: ProposalStatus | None) -> ProposalListResult: ...
     def approve_proposal(self, proposal_id: str) -> ApprovalResult: ...
     def reject_proposal(self, proposal_id: str, review_reason: str | None) -> RejectResult: ...
@@ -67,6 +109,8 @@ class FileRepository:
     work_validations_root: Path = field(init=False)
     persisted_root: Path = field(init=False)
     persisted_proposals_root: Path = field(init=False)
+    persisted_delegations_root: Path = field(init=False)
+    persisted_coordination_root: Path = field(init=False)
 
     def __post_init__(self) -> None:
         self.work_root = self.repo_root / ".sgm" / "work"
@@ -75,6 +119,8 @@ class FileRepository:
         self.work_validations_root = self.work_root / "validations"
         self.persisted_root = self.repo_root / ".sgm" / "persisted"
         self.persisted_proposals_root = self.persisted_root / "proposals"
+        self.persisted_delegations_root = self.persisted_root / "delegations"
+        self.persisted_coordination_root = self.persisted_root / "coordination"
 
     def reset(self) -> None:
         self._write_state(_empty_state())
@@ -158,7 +204,6 @@ class FileRepository:
             "previous_source_text": previous_source_text,
             "has_local_snapshot_history": has_local_snapshot_history,
             "title": spec.title,
-            "version": spec.version,
             "text": spec.text,
             "status": spec.status,
             "author": spec.author,
@@ -227,43 +272,61 @@ class FileRepository:
         ]
         return tuple(sorted(active_specs))
 
+    def assert_unique_active_ownership(self) -> None:
+        self._ownership_index(self._load_state())
+
+    def owner_for_path(self, path: str) -> tuple[str, str, str] | None:
+        state = self._load_state()
+        owner = self._ownership_index(state).get(path)
+        if owner is None:
+            return None
+        spec_id, spec_data = owner
+        return (
+            spec_id,
+            cast(str, spec_data["source_path"]),
+            cast(str, spec_data["title"]),
+        )
+
     def get_context(self, spec_ref: str) -> SpecContextResponse:
         state = self._load_state()
+        ownership_index = self._ownership_index(state)
         spec_id, spec_data = self._resolve_spec_ref(state, spec_ref)
-        approved_paths = self._approved_paths_by_spec()
-        governs = cast(dict[str, Any], spec_data["governs"])
-        spec = GoverningSpec(
-            id=spec_id,
-            source_path=cast(str, spec_data["source_path"]),
-            source_text=cast(str, spec_data["source_text"]),
-            previous_source_text=cast(str | None, spec_data.get("previous_source_text")),
-            has_local_snapshot_history=bool(spec_data.get("has_local_snapshot_history", False)),
-            title=cast(str, spec_data["title"]),
-            version=int(spec_data["version"]),
-            text=cast(str, spec_data["text"]),
-            priority=self._default_priority(governs),
-            selectors=tuple(
-                selector["selector"]
-                for selector in sorted(
-                    governs.values(),
-                    key=lambda edge: (
-                        int(edge["priority"]),
-                        cast(str | None, edge["selector"]) or "",
-                    ),
-                )
-                if cast(str | None, selector["selector"]) is not None
-            ),
+        spec = self._build_governing_spec(spec_id, spec_data)
+        owned_paths = self._owned_paths_for_spec(spec_id=spec_id, state=state)
+        delegated_files = tuple(
+            delegation
+            for delegation in self._active_delegations(state, ownership_index)
+            if delegation.delegate_spec_id == spec_id
         )
-        governed_paths: set[str] = set(governs.keys())
-        governed_paths.update(approved_paths.get(spec_id, set()))
-        governed_files: tuple[str, ...] = tuple(sorted(governed_paths))
+        editable_paths: set[str] = set(owned_paths)
+        editable_paths.update(delegation.path for delegation in delegated_files)
+        coordination_files = tuple(
+            coordination
+            for coordination in self._active_coordination(state, ownership_index)
+            if coordination.owner_spec_id != spec_id
+        )
+
+        read_specs: list[ReadRequirement] = [ReadRequirement(spec=spec, role="target", paths=())]
+        owner_paths: dict[str, list[str]] = {}
+        for delegation in delegated_files:
+            owner_paths.setdefault(delegation.owner_spec_id, []).append(delegation.path)
+        for owner_spec_id in sorted(owner_paths):
+            owner_spec_data = cast(dict[str, Any], state["specs"][owner_spec_id])
+            read_specs.append(
+                ReadRequirement(
+                    spec=self._build_governing_spec(owner_spec_id, owner_spec_data),
+                    role="owner",
+                    paths=tuple(sorted(owner_paths[owner_spec_id])),
+                )
+            )
 
         decisions: list[RelatedDecision] = []
+        decision_scope = editable_paths.union(coordination.path for coordination in coordination_files)
         for decision_id, decision_data in state["decisions"].items():
             if decision_data["status"] != "active":
                 continue
             decision_paths = set(cast(list[str], decision_data["informs"]))
-            if decision_paths.isdisjoint(governed_paths):
+            if decision_paths.isdisjoint(decision_scope):
                 continue
             decisions.append(
                 RelatedDecision(
@@ -281,12 +344,25 @@ class FileRepository:
             for proposal in self.list_proposals("pending").proposals
             if proposal.spec_id == spec_id
         )
+        next_steps = (
+            f"Unowned files: `sgm propose {spec_id} <path> \"<reason>\"`.",
+            (
+                "Files owned by another spec: ask a human, then record "
+                f"`sgm shared allow <owner-spec-id> {spec_id} <path> \"<reason>\"`."
+            ),
+            "Coordination files are only for follow-through alongside substantive in-scope work.",
+            f"After edits: `sgm validate {spec.source_path}`.",
+        )
 
         return SpecContextResponse(
             spec=spec,
+            read_specs=tuple(read_specs),
             decisions=tuple(decisions),
-            governed_files=governed_files,
+            editable_files=tuple(sorted(editable_paths)),
+            delegated_files=delegated_files,
+            coordination_files=coordination_files,
             pending_proposals=pending_proposals,
+            next_steps=next_steps,
         )
 
     def record_validation(
@@ -308,7 +384,6 @@ class FileRepository:
             "spec_id": spec_id,
             "path": target_path,
             "source_path": cast(str, spec_data["source_path"]),
-            "version": int(spec_data["version"]),
             "changed_files": list(changed_files),
             "warning_files": list(warning_files),
             "error_files": list(error_files),
@@ -323,41 +398,66 @@ class FileRepository:
         path: str,
         reason: str,
     ) -> ProposeResult:
-        state = self._load_state()
-        spec_data = cast(dict[str, Any] | None, state["specs"].get(spec_id))
-        if spec_data is None:
-            raise EntityNotFoundError(f"spec not found: {spec_id}")
-        if path not in state["code_nodes"]:
-            raise EntityNotFoundError(f"file not indexed: {path}")
-        governs = cast(dict[str, Any], spec_data["governs"])
-        if path in governs or path in self._approved_paths_by_spec().get(spec_id, set()):
+        with self._proposal_target_lock(spec_id=spec_id, path=path):
+            state = self._load_state()
+            spec_data = cast(dict[str, Any] | None, state["specs"].get(spec_id))
+            if spec_data is None:
+                raise EntityNotFoundError(f"spec not found: {spec_id}")
+            if path not in state["code_nodes"]:
+                raise EntityNotFoundError(f"file not indexed: {path}")
+            owner = self._ownership_index(state).get(path)
+            if owner is not None and owner[0] != spec_id:
+                return ProposeResult(
+                    created=False,
+                    proposal_id=None,
+                    spec_id=spec_id,
+                    spec_title=cast(str, spec_data["title"]),
+                    path=path,
+                    reason=reason,
+                    owner_spec_id=owner[0],
+                    owner_spec_title=cast(str, owner[1]["title"]),
+                )
+            governs = cast(dict[str, Any], spec_data["governs"])
+            if path in governs or path in self._approved_paths_by_spec().get(spec_id, set()):
+                return ProposeResult(
+                    created=False,
+                    proposal_id=None,
+                    spec_id=spec_id,
+                    spec_title=cast(str, spec_data["title"]),
+                    path=path,
+                    reason=reason,
+                )
+
+            pending_proposal_id = self._pending_proposal_id(spec_id=spec_id, path=path)
+            if pending_proposal_id is not None:
+                return ProposeResult(
+                    created=False,
+                    proposal_id=pending_proposal_id,
+                    spec_id=spec_id,
+                    spec_title=cast(str, spec_data["title"]),
+                    path=path,
+                    reason=reason,
+                )
+
+            payload = {
+                "id": proposal_id,
+                "spec_id": spec_id,
+                "path": path,
+                "reason": reason,
+                "status": "pending",
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "reviewed_at": None,
+                "review_reason": None,
+            }
+            self._write_json_file(self.persisted_proposals_root / f"{proposal_id}.json", payload)
             return ProposeResult(
-                created=False,
-                proposal_id=None,
+                created=True,
+                proposal_id=proposal_id,
                 spec_id=spec_id,
                 spec_title=cast(str, spec_data["title"]),
                 path=path,
                 reason=reason,
             )
-        payload = {
-            "id": proposal_id,
-            "spec_id": spec_id,
-            "path": path,
-            "reason": reason,
-            "status": "pending",
-            "created_at": datetime.now().isoformat(timespec="seconds"),
-            "reviewed_at": None,
-            "review_reason": None,
-        }
-        self._write_json_file(self.persisted_proposals_root / f"{proposal_id}.json", payload)
-        return ProposeResult(
-            created=True,
-            proposal_id=proposal_id,
-            spec_id=spec_id,
-            spec_title=cast(str, spec_data["title"]),
-            path=path,
-            reason=reason,
-        )
 
     def list_proposals(self, status: ProposalStatus | None) -> ProposalListResult:
         rows = list(self._load_proposal_rows().values())
@@ -396,6 +496,228 @@ class FileRepository:
         if proposal_path != persisted_path and proposal_path.exists():
             proposal_path.unlink()
         return RejectResult(proposal_id=proposal_id, review_reason=review_reason)
+
+    def create_delegation(
+        self,
+        owner_spec_id: str,
+        delegate_spec_id: str,
+        path: str,
+        reason: str,
+    ) -> SharedAllowResult:
+        state = self._load_state()
+        ownership_index = self._ownership_index(state)
+        self._assert_active_owned_path(
+            state=state,
+            ownership_index=ownership_index,
+            owner_spec_id=owner_spec_id,
+            path=path,
+        )
+        self._assert_active_spec(state, delegate_spec_id)
+        if owner_spec_id == delegate_spec_id:
+            raise SpecValidationError("owner and delegate must be different specs")
+
+        record_id = self._delegation_record_id(owner_spec_id, delegate_spec_id, path)
+        record_path = self.persisted_delegations_root / f"{record_id}.json"
+        existing = self._load_optional_json_file(record_path)
+        if existing is not None and cast(str, existing.get("status")) == "active":
+            return SharedAllowResult(
+                created=False,
+                delegation=self._delegation_from_state(existing),
+            )
+
+        now = datetime.now(UTC).isoformat(timespec="seconds")
+        payload = {
+            "id": record_id,
+            "owner_spec_id": owner_spec_id,
+            "delegate_spec_id": delegate_spec_id,
+            "path": path,
+            "reason": reason,
+            "status": "active",
+            "created_at": cast(str | None, existing.get("created_at")) if existing else now,
+            "revoked_at": None,
+        }
+        self._write_json_file(record_path, payload)
+        return SharedAllowResult(
+            created=True,
+            delegation=self._delegation_from_state(payload),
+        )
+
+    def revoke_delegation(
+        self,
+        owner_spec_id: str,
+        delegate_spec_id: str,
+        path: str,
+    ) -> SharedRevokeResult:
+        record_id = self._delegation_record_id(owner_spec_id, delegate_spec_id, path)
+        record_path = self.persisted_delegations_root / f"{record_id}.json"
+        existing = self._load_optional_json_file(record_path)
+        if existing is None:
+            return SharedRevokeResult(
+                revoked=False,
+                delegation=Delegation(
+                    id=record_id,
+                    owner_spec_id=owner_spec_id,
+                    delegate_spec_id=delegate_spec_id,
+                    path=path,
+                    reason="",
+                    status="revoked",
+                    created_at=datetime.now(UTC),
+                    revoked_at=datetime.now(UTC),
+                ),
+            )
+        if cast(str, existing.get("status")) != "active":
+            return SharedRevokeResult(
+                revoked=False,
+                delegation=self._delegation_from_state(existing),
+            )
+        existing["status"] = "revoked"
+        existing["revoked_at"] = datetime.now(UTC).isoformat(timespec="seconds")
+        self._write_json_file(record_path, existing)
+        return SharedRevokeResult(
+            revoked=True,
+            delegation=self._delegation_from_state(existing),
+        )
+
+    def mark_coordination(
+        self,
+        owner_spec_id: str,
+        path: str,
+        reason: str,
+    ) -> CoordinationMarkResult:
+        state = self._load_state()
+        ownership_index = self._ownership_index(state)
+        self._assert_active_owned_path(
+            state=state,
+            ownership_index=ownership_index,
+            owner_spec_id=owner_spec_id,
+            path=path,
+        )
+
+        record_id = self._coordination_record_id(owner_spec_id, path)
+        record_path = self.persisted_coordination_root / f"{record_id}.json"
+        existing = self._load_optional_json_file(record_path)
+        if existing is not None and cast(str, existing.get("status")) == "active":
+            return CoordinationMarkResult(
+                created=False,
+                coordination=self._coordination_from_state(existing),
+            )
+
+        now = datetime.now(UTC).isoformat(timespec="seconds")
+        payload = {
+            "id": record_id,
+            "owner_spec_id": owner_spec_id,
+            "path": path,
+            "reason": reason,
+            "status": "active",
+            "created_at": cast(str | None, existing.get("created_at")) if existing else now,
+            "revoked_at": None,
+        }
+        self._write_json_file(record_path, payload)
+        return CoordinationMarkResult(
+            created=True,
+            coordination=self._coordination_from_state(payload),
+        )
+
+    def unmark_coordination(
+        self,
+        owner_spec_id: str,
+        path: str,
+    ) -> CoordinationUnmarkResult:
+        record_id = self._coordination_record_id(owner_spec_id, path)
+        record_path = self.persisted_coordination_root / f"{record_id}.json"
+        existing = self._load_optional_json_file(record_path)
+        if existing is None:
+            return CoordinationUnmarkResult(
+                revoked=False,
+                coordination=Coordination(
+                    id=record_id,
+                    owner_spec_id=owner_spec_id,
+                    path=path,
+                    reason="",
+                    status="revoked",
+                    created_at=datetime.now(UTC),
+                    revoked_at=datetime.now(UTC),
+                ),
+            )
+        if cast(str, existing.get("status")) != "active":
+            return CoordinationUnmarkResult(
+                revoked=False,
+                coordination=self._coordination_from_state(existing),
+            )
+        existing["status"] = "revoked"
+        existing["revoked_at"] = datetime.now(UTC).isoformat(timespec="seconds")
+        self._write_json_file(record_path, existing)
+        return CoordinationUnmarkResult(
+            revoked=True,
+            coordination=self._coordination_from_state(existing),
+        )
+
+    def list_shared(self, query: str) -> SharedListResult:
+        state = self._load_state()
+        ownership_index = self._ownership_index(state)
+        delegations = self._active_delegations(state, ownership_index)
+        coordination = self._active_coordination(state, ownership_index)
+
+        try:
+            spec_id, spec_data = self._resolve_spec_ref(state, query)
+        except EntityNotFoundError:
+            spec_id = None
+            spec_data = None
+        if spec_id is not None and spec_data is not None:
+            return SharedListResult(
+                query=query,
+                spec_id=spec_id,
+                spec_title=cast(str, spec_data["title"]),
+                path=None,
+                owner_spec_id=None,
+                owner_spec_title=None,
+                owned_delegations=tuple(
+                    delegation
+                    for delegation in delegations
+                    if delegation.owner_spec_id == spec_id
+                ),
+                delegated_to_spec=tuple(
+                    delegation
+                    for delegation in delegations
+                    if delegation.delegate_spec_id == spec_id
+                ),
+                owned_coordination=tuple(
+                    item for item in coordination if item.owner_spec_id == spec_id
+                ),
+                available_coordination=tuple(
+                    item for item in coordination if item.owner_spec_id != spec_id
+                ),
+                path_delegations=(),
+                path_coordination=None,
+            )
+
+        if query not in state["code_nodes"]:
+            raise EntityNotFoundError(f"path or spec not found: {query}")
+        owner = ownership_index.get(query)
+        owner_spec_id: str | None = None
+        owner_spec_title: str | None = None
+        if owner is not None:
+            owner_spec_id, owner_data = owner
+            owner_spec_title = cast(str, owner_data["title"])
+        return SharedListResult(
+            query=query,
+            spec_id=None,
+            spec_title=None,
+            path=query,
+            owner_spec_id=owner_spec_id,
+            owner_spec_title=owner_spec_title,
+            owned_delegations=(),
+            delegated_to_spec=(),
+            owned_coordination=(),
+            available_coordination=(),
+            path_delegations=tuple(
+                delegation for delegation in delegations if delegation.path == query
+            ),
+            path_coordination=next(
+                (item for item in coordination if item.path == query),
+                None,
+            ),
+        )
 
     def _load_state(self) -> dict[str, Any]:
         if not self.state_path.is_file():
@@ -463,6 +785,32 @@ class FileRepository:
             approved.setdefault(spec_id, set()).add(cast(str, proposal["path"]))
         return approved
 
+    def _pending_proposal_id(self, spec_id: str, path: str) -> str | None:
+        for proposal in self._load_proposal_rows().values():
+            if proposal["status"] != "pending":
+                continue
+            if proposal["spec_id"] != spec_id or proposal["path"] != path:
+                continue
+            return cast(str, proposal["id"])
+        return None
+
+    @contextmanager
+    def _proposal_target_lock(self, spec_id: str, path: str):
+        digest = hashlib.sha256(f"{spec_id}\0{path}".encode("utf-8")).hexdigest()
+        lock_path = self.work_root / "locks" / "proposals" / f"{digest}.lock"
+        try:
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            with lock_path.open("a+", encoding="utf-8") as lock_file:
+                if fcntl is not None:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+                try:
+                    yield
+                finally:
+                    if fcntl is not None:
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        except OSError as error:
+            raise InfrastructureError(f"failed to acquire proposal lock: {error}") from error
+
     def _default_priority(self, governs: dict[str, Any]) -> int:
         priorities = [int(edge["priority"]) for edge in governs.values()]
         return min(priorities) if priorities else 1
@@ -504,6 +852,196 @@ class FileRepository:
         if not isinstance(raw_payload, dict):
             raise InfrastructureError("state file must contain a mapping")
         return cast(dict[str, Any], raw_payload)
+
+    def _load_optional_json_file(self, path: Path) -> dict[str, Any] | None:
+        if not path.is_file():
+            return None
+        return self._load_json_file(path)
+
+    def _shared_rows(self, root: Path) -> tuple[dict[str, Any], ...]:
+        if not root.is_dir():
+            return ()
+        rows: list[dict[str, Any]] = []
+        for path in sorted(root.rglob("*.json")):
+            rows.append(self._load_json_file(path))
+        return tuple(rows)
+
+    def _delegation_record_id(self, owner_spec_id: str, delegate_spec_id: str, path: str) -> str:
+        digest = hashlib.sha256(
+            f"{owner_spec_id}\0{delegate_spec_id}\0{path}".encode("utf-8")
+        ).hexdigest()
+        return f"delegation-{digest[:16]}"
+
+    def _coordination_record_id(self, owner_spec_id: str, path: str) -> str:
+        digest = hashlib.sha256(f"{owner_spec_id}\0{path}".encode("utf-8")).hexdigest()
+        return f"coordination-{digest[:16]}"
+
+    def _delegation_from_state(self, payload: dict[str, Any]) -> Delegation:
+        revoked_at = cast(str | None, payload.get("revoked_at"))
+        return Delegation(
+            id=cast(str, payload["id"]),
+            owner_spec_id=cast(str, payload["owner_spec_id"]),
+            delegate_spec_id=cast(str, payload["delegate_spec_id"]),
+            path=cast(str, payload["path"]),
+            reason=cast(str, payload["reason"]),
+            status=cast(str, payload["status"]),
+            created_at=datetime.fromisoformat(cast(str, payload["created_at"])),
+            revoked_at=datetime.fromisoformat(revoked_at) if revoked_at else None,
+        )
+
+    def _coordination_from_state(self, payload: dict[str, Any]) -> Coordination:
+        revoked_at = cast(str | None, payload.get("revoked_at"))
+        return Coordination(
+            id=cast(str, payload["id"]),
+            owner_spec_id=cast(str, payload["owner_spec_id"]),
+            path=cast(str, payload["path"]),
+            reason=cast(str, payload["reason"]),
+            status=cast(str, payload["status"]),
+            created_at=datetime.fromisoformat(cast(str, payload["created_at"])),
+            revoked_at=datetime.fromisoformat(revoked_at) if revoked_at else None,
+        )
+
+    def _active_delegations(
+        self,
+        state: dict[str, Any],
+        ownership_index: dict[str, tuple[str, dict[str, Any]]],
+    ) -> tuple[Delegation, ...]:
+        active_specs = self._active_specs(state)
+        delegations: list[Delegation] = []
+        for row in self._shared_rows(self.persisted_delegations_root):
+            if cast(str, row.get("status")) != "active":
+                continue
+            delegation = self._delegation_from_state(row)
+            if delegation.owner_spec_id not in active_specs or delegation.delegate_spec_id not in active_specs:
+                continue
+            owner = ownership_index.get(delegation.path)
+            if owner is None or owner[0] != delegation.owner_spec_id:
+                continue
+            delegations.append(delegation)
+        delegations.sort(key=lambda item: (item.path, item.owner_spec_id, item.delegate_spec_id))
+        return tuple(delegations)
+
+    def _active_coordination(
+        self,
+        state: dict[str, Any],
+        ownership_index: dict[str, tuple[str, dict[str, Any]]],
+    ) -> tuple[Coordination, ...]:
+        active_specs = self._active_specs(state)
+        coordination: list[Coordination] = []
+        for row in self._shared_rows(self.persisted_coordination_root):
+            if cast(str, row.get("status")) != "active":
+                continue
+            item = self._coordination_from_state(row)
+            if item.owner_spec_id not in active_specs:
+                continue
+            owner = ownership_index.get(item.path)
+            if owner is None or owner[0] != item.owner_spec_id:
+                continue
+            coordination.append(item)
+        coordination.sort(key=lambda item: (item.path, item.owner_spec_id))
+        return tuple(coordination)
+
+    def _active_specs(self, state: dict[str, Any]) -> set[str]:
+        return {
+            spec_id
+            for spec_id, spec_data in cast(dict[str, dict[str, Any]], state["specs"]).items()
+            if cast(str, spec_data["status"]) == "active"
+        }
+
+    def _approved_owned_paths_by_spec(self, state: dict[str, Any]) -> dict[str, set[str]]:
+        indexed_files = {
+            path
+            for path, node_data in cast(dict[str, dict[str, Any]], state["code_nodes"]).items()
+            if cast(str, node_data["kind"]) == "file"
+        }
+        approved: dict[str, set[str]] = {}
+        for proposal in self._load_proposal_rows().values():
+            if proposal["status"] != "approved":
+                continue
+            path = cast(str, proposal["path"])
+            if path not in indexed_files:
+                continue
+            spec_id = cast(str, proposal["spec_id"])
+            approved.setdefault(spec_id, set()).add(path)
+        return approved
+
+    def _ownership_index(
+        self,
+        state: dict[str, Any],
+    ) -> dict[str, tuple[str, dict[str, Any]]]:
+        specs = cast(dict[str, dict[str, Any]], state["specs"])
+        approved_paths_by_spec = self._approved_owned_paths_by_spec(state)
+        ownership_index: dict[str, tuple[str, dict[str, Any]]] = {}
+        for spec_id, spec_data in specs.items():
+            if cast(str, spec_data["status"]) != "active":
+                continue
+            governs = cast(dict[str, dict[str, Any]], spec_data["governs"])
+            owned_paths = set(governs.keys()) | approved_paths_by_spec.get(spec_id, set())
+            for path in sorted(owned_paths):
+                existing = ownership_index.get(path)
+                if existing is not None and existing[0] != spec_id:
+                    other_spec_id, other_spec_data = existing
+                    raise SpecValidationError(
+                        "active ownership overlap detected for "
+                        f"{path}: {other_spec_id} ({cast(str, other_spec_data['source_path'])}) "
+                        f"and {spec_id} ({cast(str, spec_data['source_path'])})"
+                    )
+                ownership_index[path] = (spec_id, spec_data)
+        return ownership_index
+
+    def _owned_paths_for_spec(self, spec_id: str, state: dict[str, Any]) -> tuple[str, ...]:
+        spec_data = cast(dict[str, Any], state["specs"][spec_id])
+        governs = cast(dict[str, dict[str, Any]], spec_data["governs"])
+        owned_paths = set(governs.keys())
+        owned_paths.update(self._approved_owned_paths_by_spec(state).get(spec_id, set()))
+        return tuple(sorted(owned_paths))
+
+    def _build_governing_spec(self, spec_id: str, spec_data: dict[str, Any]) -> GoverningSpec:
+        governs = cast(dict[str, dict[str, Any]], spec_data["governs"])
+        selectors = tuple(
+            selector
+            for selector in sorted(
+                {
+                    cast(str, edge_data["selector"])
+                    for edge_data in governs.values()
+                    if edge_data.get("selector") is not None
+                }
+            )
+        )
+        return GoverningSpec(
+            id=spec_id,
+            source_path=cast(str, spec_data["source_path"]),
+            source_text=cast(str, spec_data["source_text"]),
+            previous_source_text=cast(str | None, spec_data.get("previous_source_text")),
+            has_local_snapshot_history=bool(spec_data.get("has_local_snapshot_history", False)),
+            title=cast(str, spec_data["title"]),
+            text=cast(str, spec_data["text"]),
+            priority=self._default_priority(governs),
+            selectors=selectors,
+        )
+
+    def _assert_active_spec(self, state: dict[str, Any], spec_id: str) -> None:
+        spec_data = cast(dict[str, Any] | None, state["specs"].get(spec_id))
+        if spec_data is None:
+            raise EntityNotFoundError(f"spec not found: {spec_id}")
+        if cast(str, spec_data["status"]) != "active":
+            raise SpecValidationError(f"spec must be active: {spec_id}")
+
+    def _assert_active_owned_path(
+        self,
+        state: dict[str, Any],
+        ownership_index: dict[str, tuple[str, dict[str, Any]]],
+        owner_spec_id: str,
+        path: str,
+    ) -> None:
+        self._assert_active_spec(state, owner_spec_id)
+        owner = ownership_index.get(path)
+        if owner is None:
+            raise SpecValidationError(f"{path} is not owned by any active spec")
+        if owner[0] != owner_spec_id:
+            raise SpecValidationError(
+                f"{path} is owned by {owner[0]}, not {owner_spec_id}"
+            )
 
     def _clear_directory(self, path: Path) -> None:
         if not path.exists():

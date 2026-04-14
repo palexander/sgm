@@ -1,0 +1,9 @@
+{
+  "created_at": "2026-04-02T06:21:23+00:00",
+  "id": "coordination-6abf6df599f3bcf3",
+  "owner_spec_id": "spec-sgm-cli-command-model-001",
+  "path": "src/sgm/domain/render_commands.py",
+  "reason": "command rendering is a shared coordination surface",
+  "revoked_at": null,
+  "status": "active"
+}

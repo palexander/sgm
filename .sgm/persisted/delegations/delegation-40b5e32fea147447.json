@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-02T06:21:23+00:00",
+  "delegate_spec_id": "spec-sgm-proposal-review-001",
+  "id": "delegation-40b5e32fea147447",
+  "owner_spec_id": "spec-sgm-persistence-001",
+  "path": "src/sgm/domain/proposal_models.py",
+  "reason": "proposal review shares proposal data models with persistence",
+  "revoked_at": null,
+  "status": "active"
+}

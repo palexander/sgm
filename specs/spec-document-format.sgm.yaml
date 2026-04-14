@@ -1,20 +1,19 @@
 id: spec-sgm-spec-document-format-001
 title: "SGM Spec Document Format"
-version: 3
 status: active
 author: paul
 
 text: |
   SGM spec documents should conform to a formal schema that is maintained in a YAML-compatible artifact:
   1. Spec artifacts discovered from `specs/` should use the filename convention `{spec_name}.sgm.yaml`.
-  2. The schema artifact should describe the required top-level shape for spec documents, including core metadata fields such as `id`, `title`, `version`, `status`, `author`, and `text`.
+  2. The schema artifact should describe the required top-level shape for spec documents, including core metadata fields such as `id`, `title`, `status`, `author`, and `text`.
   3. `governs` should remain a list of selector mappings in that schema.
   4. The schema should define the expected shape of each `governs` entry, including the `selector` field and the optional `priority` field.
-  5. Repo spec files should conform to that schema even when they are still being drafted or expanded.
-  6. This spec naturally splashes into the spec documents themselves, the YAML schema artifact, the YAML loader, the shared spec models/renderers, and the loader-focused tests.
+  5. Repo spec files should conform to that schema; legacy top-level `version` fields are ignored for now, and draft state is represented in git history rather than by in-file metadata.
+  6. This spec naturally splashes into the YAML loader, the shared spec models/renderers, and the loader-focused tests.
 
 governs:
-  - selector: "specs/**"
+  - selector: "specs/spec-document-format.sgm.yaml"
     priority: 1
   - selector: "src/sgm/adapters/spec_loader.py"
     priority: 1
@@ -23,6 +22,4 @@ governs:
   - selector: "src/sgm/domain/renderers.py"
     priority: 1
   - selector: "tests/unit/test_spec_loader.py"
-    priority: 1
-  - selector: "tests/unit/test_spec_deltas.py"
     priority: 1

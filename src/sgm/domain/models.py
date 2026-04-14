@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from sgm.domain.context_models import FocusConflict, FocusWarning, SpecContextResponse
+from sgm.domain.context_models import (
+    FocusConflict,
+    FocusWarning,
+    ReadRequirement,
+    SpecContextResponse,
+)
 from sgm.domain.core_models import (
     CodeNode,
     CodeNodeKind,
@@ -13,10 +18,17 @@ from sgm.domain.core_models import (
 from sgm.domain.decision_models import DecisionDocument, DecisionSelector, RelatedDecision
 from sgm.domain.proposal_models import (
     ApprovalResult,
+    Coordination,
+    CoordinationMarkResult,
+    CoordinationUnmarkResult,
+    Delegation,
     Proposal,
     ProposalListResult,
     ProposeResult,
     RejectResult,
+    SharedAllowResult,
+    SharedListResult,
+    SharedRevokeResult,
 )
 from sgm.domain.result_models import (
     InitOffer,
@@ -27,6 +39,8 @@ from sgm.domain.result_models import (
 )
 from sgm.domain.spec_models import GovernanceSelector, GoverningSpec, SpecDelta, SpecDocument
 from sgm.domain.validation_models import (
+    ValidationError,
+    ValidationNote,
     ValidationReport,
     ValidationSuiteReport,
     ValidationWarning,
@@ -36,9 +50,13 @@ __all__ = [
     "ApprovalResult",
     "CodeNode",
     "CodeNodeKind",
+    "Coordination",
+    "CoordinationMarkResult",
+    "CoordinationUnmarkResult",
     "DecisionDocument",
     "DecisionSelector",
     "DecisionStatus",
+    "Delegation",
     "ExitCode",
     "FocusConflict",
     "FocusWarning",
@@ -50,9 +68,13 @@ __all__ = [
     "ProposalListResult",
     "ProposalStatus",
     "ProposeResult",
+    "ReadRequirement",
     "RejectResult",
     "RelatedDecision",
     "RepoContext",
+    "SharedAllowResult",
+    "SharedListResult",
+    "SharedRevokeResult",
     "SpecContextResponse",
     "SpecDelta",
     "SpecDocument",
@@ -60,6 +82,8 @@ __all__ = [
     "SyncDecisionResult",
     "SyncFilesResult",
     "SyncSpecResult",
+    "ValidationError",
+    "ValidationNote",
     "ValidationReport",
     "ValidationSuiteReport",
     "ValidationWarning",

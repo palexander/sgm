@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-02T06:21:22+00:00",
+  "delegate_spec_id": "spec-sgm-validation-focus-001",
+  "id": "delegation-3e9c7fb56ecee0b5",
+  "owner_spec_id": "spec-sgm-context-delta-001",
+  "path": "src/sgm/application/context_service.py",
+  "reason": "validation focus warnings build on context assembly",
+  "revoked_at": null,
+  "status": "active"
+}

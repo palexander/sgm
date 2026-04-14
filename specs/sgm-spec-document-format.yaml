@@ -4,7 +4,6 @@ type: object
 required:
   - id
   - title
-  - version
   - status
   - author
   - text
@@ -15,12 +14,9 @@ properties:
   title:
     type: string
     minLength: 1
-  version:
-    type: integer
   status:
     type: string
     enum:
-      - draft
       - active
       - deprecated
   author:

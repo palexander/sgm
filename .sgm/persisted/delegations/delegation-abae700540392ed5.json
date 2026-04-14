@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-02T06:21:22+00:00",
+  "delegate_spec_id": "spec-sgm-init-001",
+  "id": "delegation-abae700540392ed5",
+  "owner_spec_id": "spec-sgm-context-delta-001",
+  "path": "src/sgm/adapters/filesystem.py",
+  "reason": "init reuses filesystem helpers owned by context discovery",
+  "revoked_at": null,
+  "status": "active"
+}

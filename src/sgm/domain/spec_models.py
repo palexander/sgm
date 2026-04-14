@@ -17,7 +17,6 @@ class SpecDocument:
     source_path: str
     source_text: str
     title: str
-    version: int
     text: str
     status: SpecStatus
     author: str
@@ -42,7 +41,6 @@ class GoverningSpec:
     previous_source_text: str | None
     has_local_snapshot_history: bool
     title: str
-    version: int
     text: str
     priority: int
     selectors: tuple[str, ...]

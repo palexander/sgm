@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-02T18:45:45+00:00",
+  "delegate_spec_id": "spec-sgm-spec-document-format-001",
+  "id": "delegation-fdd05d62fe4e6ad7",
+  "owner_spec_id": "spec-sgm-persistence-001",
+  "path": "src/sgm/domain/core_models.py",
+  "reason": "Remove draft from SpecStatus because draft is no longer part of the spec format.",
+  "revoked_at": null,
+  "status": "active"
+}

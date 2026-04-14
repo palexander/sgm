@@ -43,7 +43,7 @@ def create_sample_repo(tmp_path: Path) -> SampleRepo:
         "export const auth = (): boolean => true;\n",
     )
     spec_path = repo_root / "specs" / "rpc-service-pattern.sgm.yaml"
-    _write(spec_path, _spec_yaml(version=1))
+    _write(spec_path, _spec_yaml(title="ConnectRPC Service Pattern"))
     middleware_spec_path = repo_root / "specs" / "middleware-policy.sgm.yaml"
     _write(middleware_spec_path, _middleware_spec_yaml())
     _write(repo_root / "decisions" / "move-validation-boundary.yaml", _decision_yaml())
@@ -68,8 +68,8 @@ def create_sample_repo(tmp_path: Path) -> SampleRepo:
     )
 
 
-def bump_spec_version(spec_path: Path, version: int = 2) -> None:
-    _write(spec_path, _spec_yaml(version=version))
+def rewrite_spec_title(spec_path: Path, title: str) -> None:
+    _write(spec_path, _spec_yaml(title=title))
 
 
 def run_cli(
@@ -95,12 +95,11 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _spec_yaml(version: int) -> str:
+def _spec_yaml(title: str) -> str:
     return "\n".join(
         [
             "id: spec-001",
-            'title: "ConnectRPC Service Pattern"',
-            f"version: {version}",
+            f'title: "{title}"',
             "status: active",
             "author: paul",
             "text: |",
@@ -148,8 +147,7 @@ def _middleware_spec_yaml() -> str:
         [
             "id: spec-002",
             'title: "Middleware Policy"',
-            "version: 1",
-            "status: active",
+            "status: deprecated",
             "author: paul",
             "text: |",
             "  Middleware work is governed separately so focus drift is visible when",

@@ -31,7 +31,6 @@ def load_spec_document(path: Path, repo_root: Path) -> SpecDocument:
         source_path=path.resolve().relative_to(repo_root.resolve()).as_posix(),
         source_text=source_text,
         title=cast(str, spec_mapping["title"]),
-        version=cast(int, spec_mapping["version"]),
         text=cast(str, spec_mapping["text"]),
         status=cast(SpecStatus, spec_mapping["status"]),
         author=cast(str, spec_mapping["author"]),

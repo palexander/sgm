@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-02T06:21:22+00:00",
+  "delegate_spec_id": "spec-sgm-validation-focus-001",
+  "id": "delegation-04d823a35c4f1aac",
+  "owner_spec_id": "spec-sgm-context-delta-001",
+  "path": "src/sgm/domain/context_models.py",
+  "reason": "validation shares focus warning context models",
+  "revoked_at": null,
+  "status": "active"
+}

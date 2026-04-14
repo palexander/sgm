@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-02T06:21:22+00:00",
+  "delegate_spec_id": "spec-sgm-context-delta-001",
+  "id": "delegation-dd47f4033e4bf552",
+  "owner_spec_id": "spec-sgm-persistence-001",
+  "path": "src/sgm/adapters/repository.py",
+  "reason": "context needs owner-backed repository queries",
+  "revoked_at": null,
+  "status": "active"
+}

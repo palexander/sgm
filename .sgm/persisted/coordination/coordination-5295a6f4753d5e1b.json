@@ -1,0 +1,9 @@
+{
+  "created_at": "2026-04-02T06:21:24+00:00",
+  "id": "coordination-5295a6f4753d5e1b",
+  "owner_spec_id": "spec-sgm-init-001",
+  "path": "AGENTS.md",
+  "reason": "repo guidance is a shared coordination surface",
+  "revoked_at": null,
+  "status": "active"
+}

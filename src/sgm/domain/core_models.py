@@ -6,10 +6,11 @@ from pathlib import Path
 from typing import Literal
 
 ExitCode = Literal[0, 1, 2, 3]
-SpecStatus = Literal["draft", "active", "deprecated"]
+SpecStatus = Literal["active", "deprecated"]
 DecisionStatus = Literal["draft", "active", "superseded"]
 CodeNodeKind = Literal["file", "directory"]
 ProposalStatus = Literal["pending", "approved", "rejected"]
+SharedRecordStatus = Literal["active", "revoked"]
 
 
 @dataclass(frozen=True, slots=True)

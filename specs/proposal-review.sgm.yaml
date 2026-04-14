@@ -1,6 +1,6 @@
 id: spec-sgm-proposal-review-001
 title: "SGM Interactive Proposal Review"
-version: 3
+version: 4
 status: active
 author: paul
 
@@ -12,7 +12,7 @@ text: |
   4. Approve and reject record the review decision immediately using the normal durable proposal record path.
   5. Each prompt should include only the essentials needed to decide quickly: proposal id, target spec, proposed path, proposal reason, and the spec text or a concise summary of the spec that owns the proposal.
   6. The review flow should not surface broader related decisions or docs by default because proposals are additive-only splash expansions.
-  7. The reviewer should be able to press `g` to expand the prompt and show the governed files for the target spec when they want more context.
+  7. The reviewer should be able to press `g` to expand the prompt and show the target spec's current editable files when they want more context.
   8. In a real interactive terminal, the review flow may clear and redraw from the top of the visible screen between prompts or decisions so each proposal gets an uncluttered full-screen review surface.
   9. Non-interactive and test-oriented runs should keep a plain transcript-friendly fallback instead of depending on screen control behavior.
   10. In that interactive redraw mode, the prompt should show as much of the target spec as fits within the visible terminal height instead of always using a fixed excerpt length.
@@ -24,21 +24,3 @@ text: |
 governs:
   - selector: "specs/proposal-review.sgm.yaml"
     priority: 1
-  - selector: "src/sgm/cli.py"
-    priority: 1
-  - selector: "src/sgm/application/services.py"
-    priority: 1
-  - selector: "src/sgm/domain/render_commands.py"
-    priority: 1
-  - selector: "src/sgm/domain/render_shared.py"
-    priority: 1
-  - selector: "src/sgm/domain/proposal_models.py"
-    priority: 1
-  - selector: "src/sgm/domain/context_models.py"
-    priority: 1
-  - selector: "README.md"
-    priority: 2
-  - selector: "AGENTS.md"
-    priority: 2
-  - selector: "tests/integration/test_cli_smoke.py"
-    priority: 2

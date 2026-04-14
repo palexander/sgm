@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-02T18:45:45+00:00",
+  "delegate_spec_id": "spec-sgm-spec-document-format-001",
+  "id": "delegation-fac4212ba716fa68",
+  "owner_spec_id": "spec-sgm-persistence-001",
+  "path": "src/sgm/adapters/repository.py",
+  "reason": "Drop persisted spec version data now that spec revisions come from git.",
+  "revoked_at": null,
+  "status": "active"
+}

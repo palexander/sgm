@@ -14,12 +14,26 @@ class ValidationWarning:
 
 
 @dataclass(frozen=True, slots=True)
+class ValidationNote:
+    path: str
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class ValidationError:
+    path: str
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
 class ValidationReport:
     spec: GoverningSpec
     changed_files: tuple[str, ...]
-    governed_files: tuple[str, ...]
+    editable_files: tuple[str, ...]
+    coordination_files: tuple[str, ...]
     warning_files: tuple[ValidationWarning, ...]
-    error_files: tuple[str, ...]
+    note_files: tuple[ValidationNote, ...]
+    error_files: tuple[ValidationError, ...]
     focus_warning: FocusWarning | None = None
 
 

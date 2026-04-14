@@ -1,0 +1,9 @@
+{
+  "created_at": "2026-04-02T06:21:23+00:00",
+  "id": "coordination-84c5d479db7614e4",
+  "owner_spec_id": "spec-sgm-cli-command-model-001",
+  "path": "README.md",
+  "reason": "README is derivative command-surface documentation",
+  "revoked_at": null,
+  "status": "active"
+}
