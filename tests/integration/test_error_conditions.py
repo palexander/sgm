@@ -11,11 +11,7 @@ from tests.integration.helpers import create_sample_repo, run_cli
 
 def _load_hook_common_module():
     module_path = (
-        Path(__file__).resolve().parents[2]
-        / "integrations"
-        / "claude-hooks"
-        / "bin"
-        / "_common.py"
+        Path(__file__).resolve().parents[2] / "integrations" / "claude-hooks" / "bin" / "_common.py"
     )
     spec = importlib.util.spec_from_file_location("sgm_hook_common", module_path)
     assert spec is not None and spec.loader is not None
@@ -307,9 +303,7 @@ def test_hook_marks_allowed_shell_edits_for_semantic_review(
                     "cwd": str(sample_repo.root),
                     "hook_event_name": "PreToolUse",
                     "tool_name": "Bash",
-                    "tool_input": {
-                        "command": "printf 'x' > src/services/discharge.ts"
-                    },
+                    "tool_input": {"command": "printf 'x' > src/services/discharge.ts"},
                 }
             )
         ),

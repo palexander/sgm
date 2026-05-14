@@ -96,64 +96,73 @@ def _write(path: Path, content: str) -> None:
 
 
 def _spec_yaml(title: str) -> str:
-    return "\n".join(
-        [
-            "id: spec-001",
-            f'title: "{title}"',
-            "status: active",
-            "author: paul",
-            "text: |",
-            "  All changes for this spec must stay within the files governed by it:",
-            (
-                "  1. `sgm context specs/rpc-service-pattern.sgm.yaml` should "
-                "surface the full spec context"
-            ),
-            (
-                "  2. `sgm validate` should validate all active specs against "
-                "the current repo change set"
-            ),
-            (
-                "  3. Files outside the governed scope require an explicit "
-                "proposal before they become in-scope"
-            ),
-            "governs:",
-            '  - selector: "src/services/**"',
-            "    priority: 1",
-        ]
-    ) + "\n"
+    return (
+        "\n".join(
+            [
+                "id: spec-001",
+                f'title: "{title}"',
+                "status: active",
+                "author: paul",
+                "text: |",
+                "  All changes for this spec must stay within the files governed by it:",
+                (
+                    "  1. `sgm context specs/rpc-service-pattern.sgm.yaml` should "
+                    "surface the full spec context"
+                ),
+                (
+                    "  2. `sgm validate` should validate all active specs against "
+                    "the current repo change set"
+                ),
+                (
+                    "  3. Files outside the governed scope require an explicit "
+                    "proposal before they become in-scope"
+                ),
+                "governs:",
+                '  - selector: "src/services/**"',
+                "    priority: 1",
+            ]
+        )
+        + "\n"
+    )
 
 
 def _decision_yaml() -> str:
-    return "\n".join(
-        [
-            "id: dec-001",
-            'title: "Move validation to middleware boundary"',
-            "status: active",
-            "context: |",
-            "  Validation helpers are being centralized outside individual service handlers.",
-            "decision: |",
-            "  New middleware code should move shared request validation out of service handlers.",
-            "consequences: |",
-            "  Service files may stay unchanged for now;",
-            "  middleware and adjacent utilities are the active focus.",
-            "touches:",
-            '  - selector: "src/middleware/**"',
-        ]
-    ) + "\n"
+    return (
+        "\n".join(
+            [
+                "id: dec-001",
+                'title: "Move validation to middleware boundary"',
+                "status: active",
+                "context: |",
+                "  Validation helpers are being centralized outside individual service handlers.",
+                "decision: |",
+                "  New middleware code should move shared request validation out of service handlers.",
+                "consequences: |",
+                "  Service files may stay unchanged for now;",
+                "  middleware and adjacent utilities are the active focus.",
+                "touches:",
+                '  - selector: "src/middleware/**"',
+            ]
+        )
+        + "\n"
+    )
 
 
 def _middleware_spec_yaml() -> str:
-    return "\n".join(
-        [
-            "id: spec-002",
-            'title: "Middleware Policy"',
-            "status: deprecated",
-            "author: paul",
-            "text: |",
-            "  Middleware work is governed separately so focus drift is visible when",
-            "  service work continues while middleware remains unfinished.",
-            "governs:",
-            '  - selector: "src/middleware/**"',
-            "    priority: 1",
-        ]
-    ) + "\n"
+    return (
+        "\n".join(
+            [
+                "id: spec-002",
+                'title: "Middleware Policy"',
+                "status: deprecated",
+                "author: paul",
+                "text: |",
+                "  Middleware work is governed separately so focus drift is visible when",
+                "  service work continues while middleware remains unfinished.",
+                "governs:",
+                '  - selector: "src/middleware/**"',
+                "    priority: 1",
+            ]
+        )
+        + "\n"
+    )

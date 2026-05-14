@@ -27,9 +27,7 @@ class ContextService:
         response = self.graph_repository.get_context(spec_ref)
         read_specs = self._with_read_specs(response.read_specs)
         target_spec = next(
-            requirement.spec
-            for requirement in read_specs
-            if requirement.role == "target"
+            requirement.spec for requirement in read_specs if requirement.role == "target"
         )
         focus_warning: FocusWarning | None = None
         interim_response = SpecContextResponse(
@@ -90,8 +88,7 @@ class ContextService:
         )
         by_spec_id = {spec.id: spec for spec in enriched_specs}
         return tuple(
-            replace(requirement, spec=by_spec_id[requirement.spec.id])
-            for requirement in read_specs
+            replace(requirement, spec=by_spec_id[requirement.spec.id]) for requirement in read_specs
         )
 
     def _active_decisions(

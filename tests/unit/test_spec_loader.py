@@ -32,7 +32,7 @@ def test_load_spec_document_parses_valid_yaml(tmp_path: Path) -> None:
 
     assert document.id == "spec-001"
     assert document.source_path == "specs/spec.sgm.yaml"
-    assert "title: \"Service Pattern\"" in document.source_text
+    assert 'title: "Service Pattern"' in document.source_text
     assert document.governs[0].selector == "src/services/**"
     assert not hasattr(document, "version")
 

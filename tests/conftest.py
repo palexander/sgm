@@ -13,4 +13,3 @@ def project_root() -> Path:
 @pytest.fixture(scope="session")
 def sgm_executable(project_root: Path) -> Path:
     return project_root / ".venv" / "bin" / "sgm"
-

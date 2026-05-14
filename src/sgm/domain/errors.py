@@ -27,4 +27,3 @@ class SpecValidationError(SgmError):
 
 class EntityNotFoundError(SgmError):
     """Raised when a spec or proposal cannot be found."""
-

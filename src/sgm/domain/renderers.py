@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from sgm.domain.render_commands import (
+    render_approval,
     render_coordination_mark,
     render_coordination_unmark,
-    render_approval,
     render_init,
     render_proposals,
     render_propose,

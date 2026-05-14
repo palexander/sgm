@@ -10,4 +10,3 @@ def test_double_star_matches_nested_files() -> None:
 def test_single_star_stays_within_segment() -> None:
     assert matches_selector("src/services/discharge.ts", "src/services/*")
     assert not matches_selector("src/services/nested/discharge.ts", "src/services/*")
-

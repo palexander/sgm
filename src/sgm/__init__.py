@@ -1,2 +1,1 @@
 """sgm package."""
-

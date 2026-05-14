@@ -53,10 +53,11 @@ class ValidationService:
     ) -> ValidationReport:
         context_response: SpecContextResponse = self.context_service.context(spec_ref, force=force)
         editable_files = set(context_response.editable_files)
-        coordination_paths = {coordination.path for coordination in context_response.coordination_files}
+        coordination_paths = {
+            coordination.path for coordination in context_response.coordination_files
+        }
         substantive_in_scope = any(
-            path in editable_files and path not in coordination_paths
-            for path in changed_files
+            path in editable_files and path not in coordination_paths for path in changed_files
         )
         pending_by_path: dict[str, ValidationWarning] = {
             proposal.path: ValidationWarning(path=proposal.path, proposal=proposal)
@@ -103,7 +104,7 @@ class ValidationService:
                         path=path,
                         message=(
                             "ungoverned file; record ownership expansion with "
-                            f"`sgm propose {context_response.spec.id} {path} \"<reason>\"`"
+                            f'`sgm propose {context_response.spec.id} {path} "<reason>"`'
                         ),
                     )
                 )

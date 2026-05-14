@@ -16,12 +16,8 @@ SPEC_EDIT_GUIDANCE_LINE = (
     "Do not edit spec files directly during implementation; use "
     "`sgm propose` for incidental splash expansion."
 )
-PROPOSAL_GUIDANCE_LINE = (
-    "Proposal records are durable immediately in `.sgm/persisted/proposals/`."
-)
-UNOWNED_GUIDANCE_LINE = (
-    'If a touched file is unowned: `sgm propose <spec-id> <path> "<reason>"`.'
-)
+PROPOSAL_GUIDANCE_LINE = "Proposal records are durable immediately in `.sgm/persisted/proposals/`."
+UNOWNED_GUIDANCE_LINE = 'If a touched file is unowned: `sgm propose <spec-id> <path> "<reason>"`.'
 FOREIGN_OWNER_GUIDANCE_LINE = (
     "If another spec owns the file: ask a human, then record "
     '`sgm shared allow <owner-spec-id> <spec-id> <path> "<reason>"`.'
@@ -87,9 +83,7 @@ class InitService:
             elif changed == "unchanged" and self.filesystem.file_exists(path):
                 installed_hooks.append(target)
 
-        offers = self._build_init_offers(
-            claude_present=self.filesystem.file_exists("CLAUDE.md")
-        )
+        offers = self._build_init_offers(claude_present=self.filesystem.file_exists("CLAUDE.md"))
         return InitResult(
             created_directories=tuple(created_directories),
             created_files=tuple(created_files),
@@ -146,9 +140,7 @@ class InitService:
             return ()
         installers: list[tuple[str, str, Any]] = []
         if hooks in {"claude", "all"}:
-            installers.append(
-                ("claude", ".claude/settings.json", self._ensure_claude_hooks)
-            )
+            installers.append(("claude", ".claude/settings.json", self._ensure_claude_hooks))
         if hooks in {"codex", "all"}:
             installers.append(("codex", ".codex/hooks.json", self._ensure_codex_hooks))
         return tuple(installers)
@@ -178,7 +170,7 @@ class InitService:
         return (
             "sh -c 'if command -v sgm >/dev/null 2>&1; then "
             f"exec sgm hook {hook_name}; "
-            f"fi; printf \"%s\\n\" \"{HOOK_MISSING_MESSAGE}\" >&2; exit 0'"
+            f'fi; printf "%s\\n" "{HOOK_MISSING_MESSAGE}" >&2; exit 0\''
         )
 
     def _hook_entry(self, matcher: str, command: str) -> dict[str, Any]:
@@ -379,8 +371,7 @@ class InitService:
                 InitOffer(
                     target="claude",
                     message=(
-                        "CLAUDE.md detected; keep Claude-specific SGM workflow "
-                        "guidance there."
+                        "CLAUDE.md detected; keep Claude-specific SGM workflow guidance there."
                     ),
                 )
             )

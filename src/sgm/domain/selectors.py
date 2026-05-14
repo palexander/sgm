@@ -31,4 +31,3 @@ def _match_double_star(path_parts: tuple[str, ...], selector_parts: tuple[str, .
         if _match_parts(path_parts=path_parts[index:], selector_parts=selector_parts):
             return True
     return False
-

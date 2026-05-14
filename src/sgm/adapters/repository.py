@@ -21,20 +21,20 @@ from sgm.domain.models import (
     Coordination,
     CoordinationMarkResult,
     CoordinationUnmarkResult,
-    Delegation,
     DecisionDocument,
     DecisionStatus,
+    Delegation,
     GoverningSpec,
     Proposal,
     ProposalListResult,
     ProposalStatus,
     ProposeResult,
+    ReadRequirement,
     RejectResult,
+    RelatedDecision,
     SharedAllowResult,
     SharedListResult,
     SharedRevokeResult,
-    ReadRequirement,
-    RelatedDecision,
     SpecContextResponse,
     SpecDocument,
     SyncDecisionResult,
@@ -131,9 +131,7 @@ class FileRepository:
         state = self._load_state()
         prefix: str = "" if scan_root == "." else f"{scan_root.rstrip('/')}/"
         existing_paths: set[str] = {
-            path
-            for path in state["code_nodes"]
-            if path == scan_root or path.startswith(prefix)
+            path for path in state["code_nodes"] if path == scan_root or path.startswith(prefix)
         }
         current_paths: set[str] = {node.path for node in nodes}
         stale_paths: set[str] = existing_paths - current_paths
@@ -321,7 +319,9 @@ class FileRepository:
             )
 
         decisions: list[RelatedDecision] = []
-        decision_scope = editable_paths.union(coordination.path for coordination in coordination_files)
+        decision_scope = editable_paths.union(
+            coordination.path for coordination in coordination_files
+        )
         for decision_id, decision_data in state["decisions"].items():
             if decision_data["status"] != "active":
                 continue
@@ -345,10 +345,10 @@ class FileRepository:
             if proposal.spec_id == spec_id
         )
         next_steps = (
-            f"Unowned files: `sgm propose {spec_id} <path> \"<reason>\"`.",
+            f'Unowned files: `sgm propose {spec_id} <path> "<reason>"`.',
             (
                 "Files owned by another spec: ask a human, then record "
-                f"`sgm shared allow <owner-spec-id> {spec_id} <path> \"<reason>\"`."
+                f'`sgm shared allow <owner-spec-id> {spec_id} <path> "<reason>"`.'
             ),
             "Coordination files are only for follow-through alongside substantive in-scope work.",
             f"After edits: `sgm validate {spec.source_path}`.",
@@ -377,8 +377,10 @@ class FileRepository:
         spec_data = cast(dict[str, Any] | None, state["specs"].get(spec_id))
         if spec_data is None:
             raise EntityNotFoundError(f"spec not found: {spec_id}")
-        record_path = self.work_validations_root / spec_id / (
-            f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%fZ')}-{uuid4().hex[:8]}.json"
+        record_path = (
+            self.work_validations_root
+            / spec_id
+            / (f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%fZ')}-{uuid4().hex[:8]}.json")
         )
         payload = {
             "spec_id": spec_id,
@@ -672,9 +674,7 @@ class FileRepository:
                 owner_spec_id=None,
                 owner_spec_title=None,
                 owned_delegations=tuple(
-                    delegation
-                    for delegation in delegations
-                    if delegation.owner_spec_id == spec_id
+                    delegation for delegation in delegations if delegation.owner_spec_id == spec_id
                 ),
                 delegated_to_spec=tuple(
                     delegation
@@ -796,7 +796,7 @@ class FileRepository:
 
     @contextmanager
     def _proposal_target_lock(self, spec_id: str, path: str):
-        digest = hashlib.sha256(f"{spec_id}\0{path}".encode("utf-8")).hexdigest()
+        digest = hashlib.sha256(f"{spec_id}\0{path}".encode()).hexdigest()
         lock_path = self.work_root / "locks" / "proposals" / f"{digest}.lock"
         try:
             lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -867,13 +867,11 @@ class FileRepository:
         return tuple(rows)
 
     def _delegation_record_id(self, owner_spec_id: str, delegate_spec_id: str, path: str) -> str:
-        digest = hashlib.sha256(
-            f"{owner_spec_id}\0{delegate_spec_id}\0{path}".encode("utf-8")
-        ).hexdigest()
+        digest = hashlib.sha256(f"{owner_spec_id}\0{delegate_spec_id}\0{path}".encode()).hexdigest()
         return f"delegation-{digest[:16]}"
 
     def _coordination_record_id(self, owner_spec_id: str, path: str) -> str:
-        digest = hashlib.sha256(f"{owner_spec_id}\0{path}".encode("utf-8")).hexdigest()
+        digest = hashlib.sha256(f"{owner_spec_id}\0{path}".encode()).hexdigest()
         return f"coordination-{digest[:16]}"
 
     def _delegation_from_state(self, payload: dict[str, Any]) -> Delegation:
@@ -912,7 +910,10 @@ class FileRepository:
             if cast(str, row.get("status")) != "active":
                 continue
             delegation = self._delegation_from_state(row)
-            if delegation.owner_spec_id not in active_specs or delegation.delegate_spec_id not in active_specs:
+            if (
+                delegation.owner_spec_id not in active_specs
+                or delegation.delegate_spec_id not in active_specs
+            ):
                 continue
             owner = ownership_index.get(delegation.path)
             if owner is None or owner[0] != delegation.owner_spec_id:
@@ -1039,9 +1040,7 @@ class FileRepository:
         if owner is None:
             raise SpecValidationError(f"{path} is not owned by any active spec")
         if owner[0] != owner_spec_id:
-            raise SpecValidationError(
-                f"{path} is owned by {owner[0]}, not {owner_spec_id}"
-            )
+            raise SpecValidationError(f"{path} is owned by {owner[0]}, not {owner_spec_id}")
 
     def _clear_directory(self, path: Path) -> None:
         if not path.exists():
@@ -1052,6 +1051,7 @@ class FileRepository:
             elif child.is_dir():
                 child.rmdir()
         path.rmdir()
+
 
 def _empty_state() -> dict[str, Any]:
     return {

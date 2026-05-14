@@ -114,8 +114,7 @@ def test_cli_spec_first_flow(
     )
     assert validate_record.returncode == 0
     assert (
-        "[PASS] all 1 changed file(s) classified for spec-001 (recorded)"
-        in validate_record.stdout
+        "[PASS] all 1 changed file(s) classified for spec-001 (recorded)" in validate_record.stdout
     )
     assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
 
@@ -147,12 +146,8 @@ def test_cli_spec_first_flow(
     assert propose_result.returncode == 0
     assert "[PROPOSED] prop-" in propose_result.stdout
     proposal_id = propose_result.stdout.splitlines()[0].split()[1]
-    assert (
-        sample_repo.root / ".sgm" / "persisted" / "proposals" / f"{proposal_id}.json"
-    ).is_file()
-    assert not (
-        sample_repo.root / ".sgm" / "work" / "proposals" / f"{proposal_id}.json"
-    ).exists()
+    assert (sample_repo.root / ".sgm" / "persisted" / "proposals" / f"{proposal_id}.json").is_file()
+    assert not (sample_repo.root / ".sgm" / "work" / "proposals" / f"{proposal_id}.json").exists()
 
     validate_warn = run_cli(
         sgm_executable,
@@ -218,9 +213,7 @@ def test_cli_spec_first_flow(
     assert validate_after_approve_force.returncode == 0
     assert "[FOCUS-WARN]" not in validate_after_approve_force.stdout
 
-    assert (
-        sample_repo.root / ".sgm" / "persisted" / "proposals" / f"{proposal_id}.json"
-    ).is_file()
+    assert (sample_repo.root / ".sgm" / "persisted" / "proposals" / f"{proposal_id}.json").is_file()
     assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
 
     subprocess.run(["git", "add", "."], cwd=sample_repo.root, check=True)
@@ -340,9 +333,7 @@ def test_cli_hook_pretool_dispatches_packaged_runtime(
             {
                 "cwd": str(sample_repo.root),
                 "tool_name": "Bash",
-                "tool_input": {
-                    "command": "sgm context specs/rpc-service-pattern.sgm.yaml"
-                },
+                "tool_input": {"command": "sgm context specs/rpc-service-pattern.sgm.yaml"},
             }
         ),
         text=True,

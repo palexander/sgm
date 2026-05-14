@@ -11,9 +11,9 @@ from sgm.application.refresh_service import RefreshService
 from sgm.application.validation_service import ValidationService
 from sgm.domain.models import (
     ApprovalResult,
-    InitResult,
     CoordinationMarkResult,
     CoordinationUnmarkResult,
+    InitResult,
     ProposalListResult,
     ProposalStatus,
     ProposeResult,

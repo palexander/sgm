@@ -108,10 +108,7 @@ def _render_validation_error(error: ValidationError) -> str:
 def _render_focus_warning(focus_warning: FocusWarning) -> list[str]:
     lines = [
         "[FOCUS-WARN]",
-        (
-            f"unfinished editable work exists under {len(focus_warning.conflicts)} "
-            "other spec(s)"
-        ),
+        (f"unfinished editable work exists under {len(focus_warning.conflicts)} other spec(s)"),
     ]
     for conflict in focus_warning.conflicts:
         lines.append(f"{conflict.spec_id} {conflict.source_path}")

@@ -16,7 +16,7 @@ SPEC_SELECTION_GUIDANCE = (
 )
 UNOWNED_GUIDANCE = 'If a touched file is unowned: `sgm propose <spec-id> <path> "<reason>"`.'
 FOREIGN_OWNER_GUIDANCE = (
-    'If another spec owns the file: ask a human, then record `sgm shared allow '
+    "If another spec owns the file: ask a human, then record `sgm shared allow "
     '<owner-spec-id> <spec-id> <path> "<reason>"`.'
 )
 OWNER_WINS_GUIDANCE = "On delegated shared files, the owner spec wins."
@@ -49,17 +49,11 @@ def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Pat
     assert "sgm-state/" in gitignore_text
     agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     assert (
-        "Main agent: orchestrate spec work and hand implementation to a sub-agent."
-        in agents_text
+        "Main agent: orchestrate spec work and hand implementation to a sub-agent." in agents_text
     )
     assert SPEC_SELECTION_GUIDANCE in agents_text
-    assert (
-        MODULARITY_GUIDANCE in agents_text
-    )
-    assert (
-        "Do not edit spec files directly during implementation; use `sgm propose`"
-        in agents_text
-    )
+    assert MODULARITY_GUIDANCE in agents_text
+    assert "Do not edit spec files directly during implementation; use `sgm propose`" in agents_text
     assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`." in (
         agents_text
     )
@@ -87,13 +81,10 @@ def test_init_updates_existing_claude_md(tmp_path: Path, sgm_executable: Path) -
     agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     assert "Existing agent guidance." in agents_text
     assert (
-        "Main agent: orchestrate spec work and hand implementation to a sub-agent."
-        in agents_text
+        "Main agent: orchestrate spec work and hand implementation to a sub-agent." in agents_text
     )
     assert SPEC_SELECTION_GUIDANCE in agents_text
-    assert (
-        MODULARITY_GUIDANCE in agents_text
-    )
+    assert MODULARITY_GUIDANCE in agents_text
     assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`." in (
         agents_text
     )
@@ -103,7 +94,7 @@ def test_init_updates_existing_claude_md(tmp_path: Path, sgm_executable: Path) -
     assert "sgm context <spec-file-or-id>" in claude_text
     assert "Use the narrower behavior spec that matches the work" in claude_text
     assert "- `sgm validate` after edits" in claude_text
-    assert "`sgm shared allow <owner-spec-id> <spec-id> <path> \"<reason>\"`" in claude_text
+    assert '`sgm shared allow <owner-spec-id> <spec-id> <path> "<reason>"`' in claude_text
     assert "owner spec wins" in claude_text
     assert "Coordination files are only for follow-through" in claude_text
     assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`" in (
@@ -130,7 +121,7 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
                 "- After edits: `uv run sgm validate`",
                 "- Dry run only: `uv run sgm validate --no-record`",
                 (
-                    '- If a touched file is unowned: `uv run sgm propose '
+                    "- If a touched file is unowned: `uv run sgm propose "
                     '<spec-id> <path> "<reason>"`'
                 ),
                 "",
@@ -152,17 +143,11 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
     agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     assert agents_text.count("Use `sgm` when working in governed areas.") == 1
     assert (
-        "Main agent: orchestrate spec work and hand implementation to a sub-agent."
-        in agents_text
+        "Main agent: orchestrate spec work and hand implementation to a sub-agent." in agents_text
     )
     assert SPEC_SELECTION_GUIDANCE in agents_text
-    assert (
-        MODULARITY_GUIDANCE in agents_text
-    )
-    assert (
-        "Do not edit spec files directly during implementation; use `sgm propose`"
-        in agents_text
-    )
+    assert MODULARITY_GUIDANCE in agents_text
+    assert "Do not edit spec files directly during implementation; use `sgm propose`" in agents_text
     assert "Proposal records are durable immediately" in agents_text
     assert UNOWNED_GUIDANCE in agents_text
     assert FOREIGN_OWNER_GUIDANCE in agents_text
@@ -193,12 +178,11 @@ def test_init_rewrites_stale_claude_section(tmp_path: Path, sgm_executable: Path
     assert "Use `sgm` before and after governed edits:" in claude_text
     assert "Use the narrower behavior spec that matches the work" in claude_text
     assert "- `sgm validate` after edits" in claude_text
-    assert "`sgm shared allow <owner-spec-id> <spec-id> <path> \"<reason>\"`" in claude_text
+    assert '`sgm shared allow <owner-spec-id> <spec-id> <path> "<reason>"`' in claude_text
     assert "owner spec wins" in claude_text
     assert "Coordination files are only for follow-through" in claude_text
     assert (
-        "- Do not edit spec files directly during implementation; use `sgm propose`"
-        in claude_text
+        "- Do not edit spec files directly during implementation; use `sgm propose`" in claude_text
     )
     assert "Proposal records are durable immediately in `.sgm/persisted/proposals/`" in (
         claude_text
@@ -215,25 +199,13 @@ def test_init_installs_claude_hooks(tmp_path: Path, sgm_executable: Path) -> Non
 
     assert result.returncode == 0
     assert "hooks: claude" in result.stdout
-    settings = json.loads(
-        (repo_root / ".claude" / "settings.json").read_text(encoding="utf-8")
-    )
-    assert _hook_commands(settings, "PreToolUse", "Bash") == [
-        _expected_hook_command("pretool")
-    ]
-    assert _hook_commands(settings, "PreToolUse", "Edit") == [
-        _expected_hook_command("pretool")
-    ]
-    assert _hook_commands(settings, "PreToolUse", "Write") == [
-        _expected_hook_command("pretool")
-    ]
-    assert _hook_commands(settings, "PostToolUse", "Bash") == [
-        _expected_hook_command("posttool")
-    ]
+    settings = json.loads((repo_root / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    assert _hook_commands(settings, "PreToolUse", "Bash") == [_expected_hook_command("pretool")]
+    assert _hook_commands(settings, "PreToolUse", "Edit") == [_expected_hook_command("pretool")]
+    assert _hook_commands(settings, "PreToolUse", "Write") == [_expected_hook_command("pretool")]
+    assert _hook_commands(settings, "PostToolUse", "Bash") == [_expected_hook_command("posttool")]
     assert _hook_commands(settings, "Stop", "") == [_expected_hook_command("stop")]
-    assert _hook_commands(settings, "SubagentStop", "") == [
-        _expected_hook_command("stop")
-    ]
+    assert _hook_commands(settings, "SubagentStop", "") == [_expected_hook_command("stop")]
 
     _assert_missing_sgm_hook_skips(repo_root, _expected_hook_command("pretool"))
 
@@ -277,9 +249,7 @@ def test_init_installs_codex_hooks_and_preserves_existing_hooks(
         "echo existing",
         _expected_hook_command("pretool"),
     ]
-    assert _hook_commands(config, "PostToolUse", "Bash") == [
-        _expected_hook_command("posttool")
-    ]
+    assert _hook_commands(config, "PostToolUse", "Bash") == [_expected_hook_command("posttool")]
     assert _hook_commands(config, "Stop", "") == [_expected_hook_command("stop")]
     assert _all_hook_commands(config).count(_expected_hook_command("pretool")) == 1
     assert _all_hook_commands(config).count(_expected_hook_command("posttool")) == 1
@@ -325,7 +295,7 @@ def _expected_hook_command(hook_name: str) -> str:
     return (
         "sh -c 'if command -v sgm >/dev/null 2>&1; then "
         f"exec sgm hook {hook_name}; "
-        f"fi; printf \"%s\\n\" \"{HOOK_MISSING_MESSAGE}\" >&2; exit 0'"
+        f'fi; printf "%s\\n" "{HOOK_MISSING_MESSAGE}" >&2; exit 0\''
     )
 
 

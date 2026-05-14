@@ -109,9 +109,7 @@ def _context(service: SgmService, spec: str, force: bool) -> ExitCode:
 def validate(
     spec: Annotated[
         str | None,
-        typer.Argument(
-            help="Optional spec id, repo-relative spec path, or unique spec filename."
-        ),
+        typer.Argument(help="Optional spec id, repo-relative spec path, or unique spec filename."),
     ] = None,
     record: Annotated[
         bool,
@@ -175,9 +173,7 @@ def _shared_allow(
     reason: str,
 ) -> ExitCode:
     typer.echo(
-        render_shared_allow(
-            service.shared_allow(owner_spec_id, delegate_spec_id, path, reason)
-        )
+        render_shared_allow(service.shared_allow(owner_spec_id, delegate_spec_id, path, reason))
     )
     return 0
 
@@ -197,11 +193,7 @@ def _shared_revoke(
     delegate_spec_id: str,
     path: str,
 ) -> ExitCode:
-    typer.echo(
-        render_shared_revoke(
-            service.shared_revoke(owner_spec_id, delegate_spec_id, path)
-        )
-    )
+    typer.echo(render_shared_revoke(service.shared_revoke(owner_spec_id, delegate_spec_id, path)))
     return 0
 
 
@@ -224,9 +216,7 @@ def _shared_mark_coordination(
     reason: str,
 ) -> ExitCode:
     typer.echo(
-        render_coordination_mark(
-            service.shared_mark_coordination(owner_spec_id, path, reason)
-        )
+        render_coordination_mark(service.shared_mark_coordination(owner_spec_id, path, reason))
     )
     return 0
 
@@ -247,11 +237,7 @@ def _shared_unmark_coordination(
     owner_spec_id: str,
     path: str,
 ) -> ExitCode:
-    typer.echo(
-        render_coordination_unmark(
-            service.shared_unmark_coordination(owner_spec_id, path)
-        )
-    )
+    typer.echo(render_coordination_unmark(service.shared_unmark_coordination(owner_spec_id, path)))
     return 0
 
 

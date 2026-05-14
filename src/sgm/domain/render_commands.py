@@ -65,7 +65,7 @@ def render_propose(result: ProposeResult) -> str:
                     "  ownership change: update the governing spec instead of proposing under another spec",
                     (
                         "  delegated access: ask a human, then record "
-                        f"`sgm shared allow {result.owner_spec_id} {result.spec_id} {result.path} \"<reason>\"`"
+                        f'`sgm shared allow {result.owner_spec_id} {result.spec_id} {result.path} "<reason>"`'
                     ),
                 ]
             )
@@ -194,7 +194,9 @@ def render_shared_list(result: SharedListResult) -> str:
     elif result.path is not None:
         lines.append(f"  file: {result.path}")
         if result.owner_spec_id is not None:
-            title_suffix = f" {result.owner_spec_title}" if result.owner_spec_title is not None else ""
+            title_suffix = (
+                f" {result.owner_spec_title}" if result.owner_spec_title is not None else ""
+            )
             lines.append(f"  owner: {result.owner_spec_id}{title_suffix}")
         else:
             lines.append("  owner: none")
@@ -241,8 +243,7 @@ def render_proposal_review(
         lines.append("")
     lines.append("  spec summary:")
     lines.extend(
-        f"    {line}"
-        for line in _spec_excerpt(review.spec_text, limit=spec_excerpt_lines)
+        f"    {line}" for line in _spec_excerpt(review.spec_text, limit=spec_excerpt_lines)
     )
     if expanded:
         if spaced:

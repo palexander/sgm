@@ -42,9 +42,7 @@ class FileSystemAdapter:
             else:
                 continue
             repo_relative_path: str = (
-                "."
-                if path == self.repo_root
-                else to_repo_relative_posix(self.repo_root, str(path))
+                "." if path == self.repo_root else to_repo_relative_posix(self.repo_root, str(path))
             )
             stat_result = path.stat()
             nodes.append(
@@ -117,9 +115,7 @@ class FileSystemAdapter:
         for dirpath, dirnames, filenames in os.walk(root_path, topdown=True, followlinks=False):
             current_dir = Path(dirpath)
             dirnames[:] = [
-                name
-                for name in sorted(dirnames)
-                if self._should_descend(current_dir / name)
+                name for name in sorted(dirnames) if self._should_descend(current_dir / name)
             ]
             for dirname in dirnames:
                 paths.append(current_dir / dirname)
@@ -145,10 +141,7 @@ class FileSystemAdapter:
         for path in sorted(specs_root.rglob("*")):
             if not path.is_file():
                 continue
-            if not (
-                path.name.endswith(".sgm.yaml")
-                or path.name.endswith(".sgm.yml")
-            ):
+            if not (path.name.endswith(".sgm.yaml") or path.name.endswith(".sgm.yml")):
                 continue
             spec_paths.append(to_repo_relative_posix(self.repo_root, str(path)))
         return tuple(spec_paths)
