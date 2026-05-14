@@ -153,8 +153,8 @@ class SgmService:
     def proposals_reject(self, proposal_id: str, review_reason: str | None) -> RejectResult:
         return self.graph_repository.reject_proposal(proposal_id, review_reason)
 
-    def init(self) -> InitResult:
-        return InitService(filesystem=self.filesystem).init()
+    def init(self, hooks: str = "none") -> InitResult:
+        return InitService(filesystem=self.filesystem).init(hooks=hooks)
 
     def _refresh_service(self) -> RefreshService:
         return RefreshService(

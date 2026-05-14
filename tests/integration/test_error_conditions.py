@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import json
 import importlib.util
+import io
+import json
 import sys
 from pathlib import Path
 
@@ -93,7 +94,10 @@ def test_hook_context_parser_reads_editable_and_coordination_sections() -> None:
                 "src/services/nested/extra.ts",
                 "[COORDINATION] 1 files",
                 "README.md <- spec-docs-001",
-                "Only use coordination files as follow-through when this change already touches a substantive editable file.",
+                (
+                    "Only use coordination files as follow-through when this change "
+                    "already touches a substantive editable file."
+                ),
             ]
         )
     )
@@ -180,3 +184,140 @@ def test_hook_file_paths_are_relative_to_repo_root_from_nested_cwd(
         "specs/rpc-service-pattern.sgm.yaml",
         "../notes.md",
     ]
+
+
+def test_packaged_hook_runtime_accepts_codex_top_level_command_payload(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    from sgm.hooks import runtime as hook_runtime
+
+    payload = {
+        "cwd": str(sample_repo.root),
+        "hook_event_name": "PostToolUse",
+        "cmd": "sgm context specs/rpc-service-pattern.sgm.yaml",
+        "response": {
+            "stdout": "\n".join(
+                [
+                    "[TARGET]",
+                    "spec-001 ConnectRPC Service Pattern (priority=1)",
+                    "[EDITABLE] 1 files",
+                    "src/services/discharge.ts",
+                    "[COORDINATION] 1 files",
+                    "src/middleware/auth.ts <- spec-002",
+                ]
+            )
+        },
+    }
+
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+
+    assert hook_runtime.run_posttool() == 0
+    state = hook_runtime.load_state(sample_repo.root)
+    assert state.active_spec_id == "spec-001"
+    assert state.editable_files == ["src/services/discharge.ts"]
+    assert state.coordination_files == ["src/middleware/auth.ts"]
+    assert state.last_context_command == "sgm context specs/rpc-service-pattern.sgm.yaml"
+
+
+def test_stop_hook_prompts_for_semantic_review_before_validate(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    from sgm.hooks import runtime as hook_runtime
+
+    state = hook_runtime.HookState(
+        active_spec_id="spec-001",
+        active_spec_path="specs/rpc-service-pattern.sgm.yaml",
+        editable_files=["src/services/discharge.ts"],
+    )
+    hook_runtime.save_state(sample_repo.root, state)
+
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps(
+                {
+                    "cwd": str(sample_repo.root),
+                    "hook_event_name": "PreToolUse",
+                    "tool_name": "Edit",
+                    "tool_input": {"file_path": "src/services/discharge.ts"},
+                }
+            )
+        ),
+    )
+    assert hook_runtime.run_pretool() == 0
+    capsys.readouterr()
+    state_after_edit = hook_runtime.load_state(sample_repo.root)
+    assert state_after_edit.dirty_since_validate is True
+    assert state_after_edit.semantic_review_required is True
+
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(json.dumps({"cwd": str(sample_repo.root)})),
+    )
+    assert hook_runtime.run_stop() == 0
+    stop_output = json.loads(capsys.readouterr().out)
+    assert stop_output["decision"] == "block"
+    assert "run a quick SGM semantic alignment eval" in stop_output["reason"]
+    assert "sgm hook semantic-reviewed" in stop_output["reason"]
+
+    monkeypatch.chdir(sample_repo.root)
+    assert hook_runtime.run_semantic_reviewed() == 0
+    assert "[SEMANTIC-REVIEWED]" in capsys.readouterr().out
+
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(json.dumps({"cwd": str(sample_repo.root)})),
+    )
+    assert hook_runtime.run_stop() == 0
+    validate_output = json.loads(capsys.readouterr().out)
+    assert validate_output["decision"] == "block"
+    assert "Run `sgm validate` before finishing" in validate_output["reason"]
+
+
+def test_hook_marks_allowed_shell_edits_for_semantic_review(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    from sgm.hooks import runtime as hook_runtime
+
+    hook_runtime.save_state(
+        sample_repo.root,
+        hook_runtime.HookState(
+            active_spec_id="spec-001",
+            editable_files=["src/services/discharge.ts"],
+        ),
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps(
+                {
+                    "cwd": str(sample_repo.root),
+                    "hook_event_name": "PreToolUse",
+                    "tool_name": "Bash",
+                    "tool_input": {
+                        "command": "printf 'x' > src/services/discharge.ts"
+                    },
+                }
+            )
+        ),
+    )
+
+    assert hook_runtime.run_pretool() == 0
+    decision = json.loads(capsys.readouterr().out)
+    assert decision["hookSpecificOutput"]["permissionDecision"] == "allow"
+    state = hook_runtime.load_state(sample_repo.root)
+    assert state.dirty_since_validate is True
+    assert state.semantic_review_required is True

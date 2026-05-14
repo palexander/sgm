@@ -30,11 +30,12 @@ from sgm.domain.errors import (
 from sgm.domain.models import ExitCode, ProposalStatus
 from sgm.domain.paths import ensure_repo_root
 from sgm.domain.proposal_models import ProposalReviewItem
+from sgm.domain.render_commands import render_proposal_review
 from sgm.domain.renderers import (
     render_approval,
+    render_context,
     render_coordination_mark,
     render_coordination_unmark,
-    render_context,
     render_init,
     render_proposals,
     render_propose,
@@ -47,17 +48,18 @@ from sgm.domain.renderers import (
     render_sync_spec,
     render_validation,
 )
-from sgm.domain.render_commands import render_proposal_review
 
 app = typer.Typer(help="Shared SGM CLI for humans and agents.")
 proposals_app = typer.Typer(help="Review and manage governance proposals.")
 spec_app = typer.Typer(help="Author and manage spec documents.")
 shared_app = typer.Typer(help="Manage shared governance delegation and coordination.")
 sync_app = typer.Typer(help="Refresh derived graph state from repo sources.")
+hook_app = typer.Typer(help="Run agent hook entrypoints.")
 app.add_typer(proposals_app, name="proposals")
 app.add_typer(spec_app, name="spec")
 app.add_typer(shared_app, name="shared")
 app.add_typer(sync_app, name="sync")
+app.add_typer(hook_app, name="hook")
 
 
 @app.callback(invoke_without_command=True)
@@ -257,7 +259,9 @@ def _shared_unmark_coordination(
 def shared_list(
     query: Annotated[
         str,
-        typer.Argument(help="Spec id, spec path, unique spec filename, or repo-relative file path."),
+        typer.Argument(
+            help="Spec id, spec path, unique spec filename, or repo-relative file path."
+        ),
     ],
 ) -> None:
     _run_command(lambda service: _shared_list(service, query))
@@ -269,13 +273,55 @@ def _shared_list(service: SgmService, query: str) -> ExitCode:
 
 
 @app.command(help="Bootstrap SGM files and guidance in the current repo.")
-def init() -> None:
-    _run_command(_init, auto_refresh=False)
+def init(
+    hooks: Annotated[
+        str,
+        typer.Option(
+            "--hooks",
+            help="Optional agent hooks to install: none, claude, codex, or all.",
+        ),
+    ] = "none",
+) -> None:
+    _run_command(lambda service: _init(service, hooks), auto_refresh=False)
 
 
-def _init(service: SgmService) -> ExitCode:
-    typer.echo(render_init(service.init()))
+def _init(service: SgmService, hooks: str) -> ExitCode:
+    normalized_hooks = hooks.strip().lower()
+    if normalized_hooks not in {"none", "claude", "codex", "all"}:
+        raise SgmError("--hooks must be one of: none, claude, codex, all")
+    typer.echo(render_init(service.init(hooks=normalized_hooks)))
     return 0
+
+
+@hook_app.command("pretool", help="Run the SGM PreToolUse hook.")
+def hook_pretool() -> None:
+    from sgm.hooks.pretool import main as run_hook
+
+    raise typer.Exit(run_hook())
+
+
+@hook_app.command("posttool", help="Run the SGM PostToolUse hook.")
+def hook_posttool() -> None:
+    from sgm.hooks.posttool import main as run_hook
+
+    raise typer.Exit(run_hook())
+
+
+@hook_app.command("stop", help="Run the SGM Stop hook.")
+def hook_stop() -> None:
+    from sgm.hooks.stop import main as run_hook
+
+    raise typer.Exit(run_hook())
+
+
+@hook_app.command(
+    "semantic-reviewed",
+    help="Record that the current agent performed the semantic alignment review.",
+)
+def hook_semantic_reviewed() -> None:
+    from sgm.hooks.runtime import run_semantic_reviewed
+
+    raise typer.Exit(run_semantic_reviewed())
 
 
 @spec_app.command("add", help="Create a new spec file from a base template and open it.")

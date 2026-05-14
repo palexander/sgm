@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -22,6 +23,7 @@ OWNER_WINS_GUIDANCE = "On delegated shared files, the owner spec wins."
 COORDINATION_GUIDANCE = (
     "Coordination files are only for mechanical follow-through alongside substantive editable work."
 )
+HOOK_MISSING_MESSAGE = "SGM hook skipped: install the sgm binary to enable governance hooks."
 
 
 def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Path) -> None:
@@ -202,3 +204,163 @@ def test_init_rewrites_stale_claude_section(tmp_path: Path, sgm_executable: Path
         claude_text
     )
     assert "Prefer modules that align with a single spec concern when practical" in claude_text
+
+
+def test_init_installs_claude_hooks(tmp_path: Path, sgm_executable: Path) -> None:
+    repo_root = tmp_path / "claude-hooks-repo"
+    repo_root.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo_root, check=True)
+
+    result = run_cli(sgm_executable, repo_root, "init", "--hooks", "claude")
+
+    assert result.returncode == 0
+    assert "hooks: claude" in result.stdout
+    settings = json.loads(
+        (repo_root / ".claude" / "settings.json").read_text(encoding="utf-8")
+    )
+    assert _hook_commands(settings, "PreToolUse", "Bash") == [
+        _expected_hook_command("pretool")
+    ]
+    assert _hook_commands(settings, "PreToolUse", "Edit") == [
+        _expected_hook_command("pretool")
+    ]
+    assert _hook_commands(settings, "PreToolUse", "Write") == [
+        _expected_hook_command("pretool")
+    ]
+    assert _hook_commands(settings, "PostToolUse", "Bash") == [
+        _expected_hook_command("posttool")
+    ]
+    assert _hook_commands(settings, "Stop", "") == [_expected_hook_command("stop")]
+    assert _hook_commands(settings, "SubagentStop", "") == [
+        _expected_hook_command("stop")
+    ]
+
+    _assert_missing_sgm_hook_skips(repo_root, _expected_hook_command("pretool"))
+
+
+def test_init_installs_codex_hooks_and_preserves_existing_hooks(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    repo_root = tmp_path / "codex-hooks-repo"
+    repo_root.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo_root, check=True)
+    existing_config = {
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "Bash",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "echo existing",
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+    (repo_root / ".codex").mkdir()
+    (repo_root / ".codex" / "hooks.json").write_text(
+        json.dumps(existing_config),
+        encoding="utf-8",
+    )
+
+    result = run_cli(sgm_executable, repo_root, "init", "--hooks", "codex")
+    second_result = run_cli(sgm_executable, repo_root, "init", "--hooks", "codex")
+
+    assert result.returncode == 0
+    assert second_result.returncode == 0
+    assert "hooks: codex" in result.stdout
+    config = json.loads((repo_root / ".codex" / "hooks.json").read_text(encoding="utf-8"))
+    assert _hook_commands(config, "PreToolUse", "Bash") == [
+        "echo existing",
+        _expected_hook_command("pretool"),
+    ]
+    assert _hook_commands(config, "PostToolUse", "Bash") == [
+        _expected_hook_command("posttool")
+    ]
+    assert _hook_commands(config, "Stop", "") == [_expected_hook_command("stop")]
+    assert _all_hook_commands(config).count(_expected_hook_command("pretool")) == 1
+    assert _all_hook_commands(config).count(_expected_hook_command("posttool")) == 1
+    assert _all_hook_commands(config).count(_expected_hook_command("stop")) == 1
+
+    _assert_missing_sgm_hook_skips(repo_root, _expected_hook_command("stop"))
+
+
+def test_init_installs_all_agent_hooks(tmp_path: Path, sgm_executable: Path) -> None:
+    repo_root = tmp_path / "all-hooks-repo"
+    repo_root.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo_root, check=True)
+
+    result = run_cli(sgm_executable, repo_root, "init", "--hooks", "all")
+
+    assert result.returncode == 0
+    assert "hooks: claude, codex" in result.stdout
+    assert (repo_root / ".claude" / "settings.json").is_file()
+    assert (repo_root / ".codex" / "hooks.json").is_file()
+
+
+def _hook_commands(config: dict[str, object], event: str, matcher: str) -> list[str]:
+    commands: list[str] = []
+    hooks = config.get("hooks")
+    assert isinstance(hooks, dict)
+    entries = hooks.get(event)
+    assert isinstance(entries, list)
+    for entry in entries:
+        assert isinstance(entry, dict)
+        if entry.get("matcher", "") != matcher:
+            continue
+        raw_hooks = entry.get("hooks")
+        assert isinstance(raw_hooks, list)
+        for hook in raw_hooks:
+            assert isinstance(hook, dict)
+            command = hook.get("command")
+            assert isinstance(command, str)
+            commands.append(command)
+    return commands
+
+
+def _expected_hook_command(hook_name: str) -> str:
+    return (
+        "sh -c 'if command -v sgm >/dev/null 2>&1; then "
+        f"exec sgm hook {hook_name}; "
+        f"fi; printf \"%s\\n\" \"{HOOK_MISSING_MESSAGE}\" >&2; exit 0'"
+    )
+
+
+def _assert_missing_sgm_hook_skips(repo_root: Path, command: str) -> None:
+    bin_dir = repo_root / "empty-path"
+    bin_dir.mkdir()
+    (bin_dir / "sh").symlink_to("/bin/sh")
+
+    result = subprocess.run(
+        command,
+        cwd=repo_root,
+        env={"PATH": str(bin_dir)},
+        shell=True,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert HOOK_MISSING_MESSAGE in result.stderr
+
+
+def _all_hook_commands(config: dict[str, object]) -> list[str]:
+    commands: list[str] = []
+    hooks = config.get("hooks")
+    assert isinstance(hooks, dict)
+    for event_entries in hooks.values():
+        assert isinstance(event_entries, list)
+        for entry in event_entries:
+            assert isinstance(entry, dict)
+            raw_hooks = entry.get("hooks")
+            assert isinstance(raw_hooks, list)
+            for hook in raw_hooks:
+                assert isinstance(hook, dict)
+                command = hook.get("command")
+                assert isinstance(command, str)
+                commands.append(command)
+    return commands

@@ -9,24 +9,6 @@
             "command": "sh -c 'if command -v sgm >/dev/null 2>&1; then exec sgm hook pretool; fi; printf \"%s\\n\" \"SGM hook skipped: install the sgm binary to enable governance hooks.\" >&2; exit 0'"
           }
         ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh -c 'if command -v sgm >/dev/null 2>&1; then exec sgm hook pretool; fi; printf \"%s\\n\" \"SGM hook skipped: install the sgm binary to enable governance hooks.\" >&2; exit 0'"
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh -c 'if command -v sgm >/dev/null 2>&1; then exec sgm hook pretool; fi; printf \"%s\\n\" \"SGM hook skipped: install the sgm binary to enable governance hooks.\" >&2; exit 0'"
-          }
-        ]
       }
     ],
     "PostToolUse": [
@@ -42,18 +24,6 @@
     ],
     "Stop": [
       {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh -c 'if command -v sgm >/dev/null 2>&1; then exec sgm hook stop; fi; printf \"%s\\n\" \"SGM hook skipped: install the sgm binary to enable governance hooks.\" >&2; exit 0'"
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "",
         "hooks": [
           {
             "type": "command",

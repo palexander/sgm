@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-05-14T17:28:55+00:00",
+  "delegate_spec_id": "spec-sgm-agent-hook-installation-001",
+  "id": "delegation-c73c98ae9469eca2",
+  "owner_spec_id": "spec-sgm-validation-focus-001",
+  "path": "tests/integration/test_error_conditions.py",
+  "reason": "Agent hook installation adds hook payload coverage while validation focus remains the owner.",
+  "revoked_at": null,
+  "status": "active"
+}

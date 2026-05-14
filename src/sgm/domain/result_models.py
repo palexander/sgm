@@ -35,3 +35,4 @@ class InitResult:
     created_files: tuple[str, ...]
     updated_files: tuple[str, ...]
     offers: tuple[InitOffer, ...]
+    installed_hooks: tuple[str, ...] = ()

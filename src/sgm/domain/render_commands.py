@@ -44,6 +44,8 @@ def render_init(result: InitResult) -> str:
         lines.append(f"created: {', '.join(result.created_files)}")
     if result.updated_files:
         lines.append(f"updated: {', '.join(result.updated_files)}")
+    if result.installed_hooks:
+        lines.append(f"hooks: {', '.join(result.installed_hooks)}")
     if result.offers:
         lines.append("[OFFERS]")
         for offer in result.offers:

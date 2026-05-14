@@ -9,4 +9,5 @@ than required runtime dependencies.
 Current examples:
 
 - `claude-hooks/` for Claude Code hook-based enforcement of the SGM workflow
+- `codex-hooks/` for Codex hook-based enforcement of the SGM workflow
 - `pre-commit/` for a model-agnostic final gate before commits

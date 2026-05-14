@@ -1,7 +1,12 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
-from sgm.hooks.stop import main
+from sgm.hooks.runtime import run_pretool
+
+
+def main() -> int:
+    return run_pretool()
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

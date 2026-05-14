@@ -1,0 +1,31 @@
+id: spec-sgm-agent-hook-installation-001
+title: "SGM Agent Hook Installation"
+status: active
+author: paul
+
+text: |
+  SGM should provide optional agent hook installation for Claude Code and Codex:
+  1. Hook enforcement should be shared across supported agents so Claude Code and Codex follow the same SGM workflow guardrails.
+  2. The hooks should require `sgm context <spec-file-or-id>` before governed edits when no active spec scope is known.
+  3. The hooks should block edits outside the active editable or coordination file set unless the user makes an explicit force override.
+  4. The hooks should update local hook state after successful `sgm context` and `sgm validate` commands.
+  5. The hooks should require the agent to perform and record a semantic spec-to-implementation alignment review before an agent stop event can finish when edits are still dirty.
+  6. The hooks should require `sgm validate` after the semantic alignment review before an agent stop event can finish when edits are still dirty.
+  7. Hook state should remain repo-local working state under `.sgm/work/` and store paths relative to the project root.
+  8. `sgm init` should let the user choose whether to install no hooks, Claude Code hooks, Codex hooks, or both.
+  9. `sgm init` should be idempotent: repeated runs should not duplicate SGM hook entries or remove unrelated agent hooks.
+  10. Claude Code hook installation should create or merge repo-local `.claude/settings.json` entries that invoke the packaged SGM hook entrypoints.
+  11. Codex hook installation should create or merge repo-local `.codex/hooks.json` entries that invoke the packaged SGM hook entrypoints.
+  12. Generated hook commands should target installed `sgm hook` binary subcommands rather than source-tree-only integration paths.
+  13. If a checked-in hook config runs before `sgm` is installed, the hook command should print a clear warning and exit successfully instead of breaking the agent.
+  14. This spec naturally splashes into hook runtime parsing, agent hook templates, init installer behavior, init output rendering, and the integration tests that exercise hook installation and enforcement.
+
+governs:
+  - selector: "specs/agent-hook-installation.sgm.yaml"
+    priority: 1
+  - selector: "src/sgm/hooks/**"
+    priority: 1
+  - selector: "integrations/codex-hooks/**"
+    priority: 1
+  - selector: "src/sgm/domain/result_models.py"
+    priority: 2

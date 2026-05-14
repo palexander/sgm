@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -326,6 +327,67 @@ def test_cli_spec_first_flow(
     assert tuple((sample_repo.root / ".sgm" / "work" / "validations").rglob("*.json"))
 
 
+def test_cli_hook_pretool_dispatches_packaged_runtime(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+
+    result = subprocess.run(
+        [str(sgm_executable), "hook", "pretool"],
+        cwd=sample_repo.root,
+        input=json.dumps(
+            {
+                "cwd": str(sample_repo.root),
+                "tool_name": "Bash",
+                "tool_input": {
+                    "command": "sgm context specs/rpc-service-pattern.sgm.yaml"
+                },
+            }
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert json.loads(result.stdout)["hookSpecificOutput"]["permissionDecision"] == "allow"
+
+
+def test_cli_hook_semantic_reviewed_records_checkpoint(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    state_path = sample_repo.root / ".sgm" / "work" / "claude-hook-state.json"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "active_spec_id": "spec-001",
+                "semantic_review_required": True,
+                "dirty_since_validate": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [str(sgm_executable), "hook", "semantic-reviewed"],
+        cwd=sample_repo.root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "[SEMANTIC-REVIEWED]" in result.stdout
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["semantic_review_required"] is False
+    assert state["dirty_since_validate"] is True
+    assert state["last_semantic_review_command"] == "sgm hook semantic-reviewed"
+
+
 def test_spec_add_creates_template_and_opens_editor(
     tmp_path: Path,
     sgm_executable: Path,
@@ -616,9 +678,10 @@ def test_coordination_files_require_substantive_edit(
     )
     assert validate_with_substantive.returncode == 0
     assert "[NOTES]" in validate_with_substantive.stdout
-    assert "coordination spillover allowed because this change also touches a substantive editable file" in (
-        validate_with_substantive.stdout
-    )
+    assert (
+        "coordination spillover allowed because this change also touches "
+        "a substantive editable file"
+    ) in validate_with_substantive.stdout
     assert "[FOCUS-WARN]" not in validate_with_substantive.stdout
 
 
