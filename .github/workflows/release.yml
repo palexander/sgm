@@ -51,13 +51,13 @@ jobs:
             ## Install
 
             ```bash
-            curl -fsSL https://raw.githubusercontent.com/paul-cmz/sgm/main/install.sh | bash
+            curl -fsSL https://raw.githubusercontent.com/palexander/sgm/main/install.sh | bash
             ```
 
             Or pin to this version:
 
             ```bash
-            SGM_VERSION=${{ github.ref_name }} curl -fsSL https://raw.githubusercontent.com/paul-cmz/sgm/main/install.sh | bash
+            SGM_VERSION=${{ github.ref_name }} curl -fsSL https://raw.githubusercontent.com/palexander/sgm/main/install.sh | bash
             ```
 
             ## Upgrade

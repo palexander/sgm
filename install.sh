@@ -6,7 +6,7 @@ set -euo pipefail
 # Or with a specific version:
 # SGM_VERSION=v0.1.0 curl -fsSL ... | bash
 
-GITHUB_REPO="paul-cmz/sgm"
+GITHUB_REPO="palexander/sgm"
 TOOL_NAME="sgm"
 
 # Colors
