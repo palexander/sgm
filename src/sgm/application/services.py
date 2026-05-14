@@ -127,7 +127,7 @@ class SgmService:
         normalized_query = query
         target_path = self.repo_context.root / query
         if target_path.exists():
-            normalized_query = to_repo_relative_posix(self.repo_context.root, target_path)
+            normalized_query = to_repo_relative_posix(self.repo_context.root, str(target_path))
         return self.graph_repository.list_shared(normalized_query)
 
     def proposals_list(self, status: ProposalStatus | None) -> ProposalListResult:

@@ -872,7 +872,7 @@ def test_proposals_review_clears_and_redraws_in_tty(
         lambda message="", nl=True: captured.append(message),
     )
 
-    exit_code = cli._proposals_review(_FakeService())
+    exit_code = cli._proposals_review(_FakeService())  # type: ignore[arg-type]
 
     assert exit_code == 0
     assert captured.count("<clear>") == 2
@@ -951,7 +951,7 @@ def test_proposals_review_caps_spec_excerpt_to_terminal_height(
         lambda message="", nl=True: captured.append(message),
     )
 
-    exit_code = cli._proposals_review(_FakeService())
+    exit_code = cli._proposals_review(_FakeService())  # type: ignore[arg-type]
 
     assert exit_code == 0
     output = "\n".join(captured)

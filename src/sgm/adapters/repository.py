@@ -6,13 +6,13 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 from uuid import uuid4
 
 try:
     import fcntl
 except ImportError:  # pragma: no cover - advisory locking is unavailable on Windows.
-    fcntl = None
+    fcntl = None  # type: ignore[assignment]
 
 from sgm.domain.errors import EntityNotFoundError, InfrastructureError, SpecValidationError
 from sgm.domain.models import (
@@ -882,7 +882,7 @@ class FileRepository:
             delegate_spec_id=cast(str, payload["delegate_spec_id"]),
             path=cast(str, payload["path"]),
             reason=cast(str, payload["reason"]),
-            status=cast(str, payload["status"]),
+            status=cast(Literal["active", "revoked"], payload["status"]),
             created_at=datetime.fromisoformat(cast(str, payload["created_at"])),
             revoked_at=datetime.fromisoformat(revoked_at) if revoked_at else None,
         )
@@ -894,7 +894,7 @@ class FileRepository:
             owner_spec_id=cast(str, payload["owner_spec_id"]),
             path=cast(str, payload["path"]),
             reason=cast(str, payload["reason"]),
-            status=cast(str, payload["status"]),
+            status=cast(Literal["active", "revoked"], payload["status"]),
             created_at=datetime.fromisoformat(cast(str, payload["created_at"])),
             revoked_at=datetime.fromisoformat(revoked_at) if revoked_at else None,
         )

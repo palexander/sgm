@@ -275,7 +275,7 @@ def _hook_commands(config: dict[str, object], event: str, matcher: str) -> list[
     commands: list[str] = []
     hooks = config.get("hooks")
     assert isinstance(hooks, dict)
-    entries = hooks.get(event)
+    entries = hooks.get(event)  # type: ignore[arg-type]
     assert isinstance(entries, list)
     for entry in entries:
         assert isinstance(entry, dict)
@@ -326,7 +326,7 @@ def _all_hook_commands(config: dict[str, object]) -> list[str]:
         assert isinstance(event_entries, list)
         for entry in event_entries:
             assert isinstance(entry, dict)
-            raw_hooks = entry.get("hooks")
+            raw_hooks = entry.get("hooks")  # type: ignore[arg-type]
             assert isinstance(raw_hooks, list)
             for hook in raw_hooks:
                 assert isinstance(hook, dict)
