@@ -26,6 +26,19 @@ class ValidationError:
 
 
 @dataclass(frozen=True, slots=True)
+class MultiSpecFileGroup:
+    spec_id: str
+    source_path: str
+    paths: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class MultiSpecHint:
+    target_spec_id: str
+    groups: tuple[MultiSpecFileGroup, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class ValidationReport:
     spec: GoverningSpec
     changed_files: tuple[str, ...]
@@ -35,6 +48,7 @@ class ValidationReport:
     note_files: tuple[ValidationNote, ...]
     error_files: tuple[ValidationError, ...]
     focus_warning: FocusWarning | None = None
+    multi_spec_hint: MultiSpecHint | None = None
 
 
 @dataclass(frozen=True, slots=True)

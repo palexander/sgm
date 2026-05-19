@@ -9,6 +9,7 @@ from sgm.domain.models import (
     ValidationWarning,
 )
 from sgm.domain.render_shared import render_spec_delta
+from sgm.domain.validation_models import MultiSpecHint
 
 
 def render_validation(suite: ValidationSuiteReport, recorded: bool) -> str:
@@ -85,6 +86,8 @@ def _render_validation_report(report: ValidationReport, recorded: bool) -> str:
         lines.extend(_render_validation_warning(warning) for warning in report.warning_files)
     if report.focus_warning is not None:
         lines.extend(_render_focus_warning(report.focus_warning))
+    if report.multi_spec_hint is not None:
+        lines.extend(_render_multi_spec_hint(report.multi_spec_hint))
     if report.error_files:
         lines.append("[ERRORS]")
         lines.extend(_render_validation_error(error) for error in report.error_files)
@@ -115,4 +118,33 @@ def _render_focus_warning(focus_warning: FocusWarning) -> list[str]:
         for path in conflict.changed_files:
             lines.append(f"  pending: {path}")
     lines.append("Use --force to continue anyway.")
+    return lines
+
+
+def _render_multi_spec_hint(hint: MultiSpecHint) -> list[str]:
+    lines = [
+        "[MULTI-SPEC]",
+        "This change touches files owned by multiple specs:",
+    ]
+    for group in hint.groups:
+        paths = ", ".join(group.paths)
+        lines.append(f"- {group.spec_id} {group.source_path}: {paths}")
+    lines.extend(
+        [
+            "If these changes are separable, finish one spec slice at a time:",
+            "1. Keep only one spec's files dirty.",
+            "2. Run `sgm validate <that-spec>`.",
+            "3. Commit or otherwise checkpoint that slice.",
+            "4. Run `sgm context <next-spec>` and continue.",
+            (
+                "You can temporarily park another spec's slice with "
+                '`git stash push -- <paths>` if needed.'
+            ),
+            (
+                "If one slice must touch another spec's owned file, ask a human and "
+                "record `sgm shared allow <owner-spec-id> "
+                f'{hint.target_spec_id} <path> "<reason>"`.'
+            ),
+        ]
+    )
     return lines

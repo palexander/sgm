@@ -674,6 +674,7 @@ def test_coordination_files_require_substantive_edit(
         "a substantive editable file"
     ) in validate_with_substantive.stdout
     assert "[FOCUS-WARN]" not in validate_with_substantive.stdout
+    assert "[MULTI-SPEC]" not in validate_with_substantive.stdout
 
 
 def test_validate_no_record_leaves_recorded_state_unchanged(
@@ -1068,3 +1069,50 @@ def test_spec_targeted_commands_warn_about_other_unfinished_spec_work(
     )
     assert forced_validate.returncode == 2
     assert "[FOCUS-WARN]" not in forced_validate.stdout
+
+
+def test_spec_targeted_validate_hints_when_changed_files_span_multiple_specs(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+    _activate_middleware_spec(sample_repo)
+
+    service_path = sample_repo.root / "src" / "services" / "discharge.ts"
+    service_path.write_text(
+        "export const handler = (): string => 'reviewed';\n",
+        encoding="utf-8",
+    )
+    auth_path = sample_repo.root / "src" / "middleware" / "auth.ts"
+    auth_path.write_text(
+        "export const auth = (): string => 'reviewed';\n",
+        encoding="utf-8",
+    )
+
+    validate_result = run_cli(
+        sgm_executable,
+        sample_repo.root,
+        "validate",
+        "specs/rpc-service-pattern.sgm.yaml",
+        "--no-record",
+    )
+
+    assert validate_result.returncode == 2
+    assert "[MULTI-SPEC]" in validate_result.stdout
+    assert "This change touches files owned by multiple specs:" in validate_result.stdout
+    assert (
+        "- spec-001 specs/rpc-service-pattern.sgm.yaml: src/services/discharge.ts"
+        in validate_result.stdout
+    )
+    assert (
+        "- spec-002 specs/middleware-policy.sgm.yaml: src/middleware/auth.ts"
+        in validate_result.stdout
+    )
+    assert "If these changes are separable, finish one spec slice at a time:" in (
+        validate_result.stdout
+    )
+    assert "git stash push -- <paths>" in validate_result.stdout
+    assert (
+        'sgm shared allow <owner-spec-id> spec-001 <path> "<reason>"'
+        in validate_result.stdout
+    )
