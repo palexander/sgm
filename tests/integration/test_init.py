@@ -48,6 +48,12 @@ def test_init_bootstraps_repo_without_claude(tmp_path: Path, sgm_executable: Pat
     assert ".sgm/work/" in gitignore_text
     assert "sgm-state/" in gitignore_text
     agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
+    assert agents_text.count("<sgm_instructions>") == 1
+    assert agents_text.count("</sgm_instructions>") == 1
+    assert agents_text.index("<sgm_instructions>") < agents_text.index(
+        "Use `sgm` when working in governed areas."
+    )
+    assert agents_text.index("Dry run only") < agents_text.index("</sgm_instructions>")
     assert (
         "Main agent: orchestrate spec work and hand implementation to a sub-agent." in agents_text
     )
@@ -90,6 +96,12 @@ def test_init_updates_existing_claude_md(tmp_path: Path, sgm_executable: Path) -
     )
     assert "sgm validate" in agents_text
     claude_text = (repo_root / "CLAUDE.md").read_text(encoding="utf-8")
+    assert claude_text.count("<sgm_instructions>") == 1
+    assert claude_text.count("</sgm_instructions>") == 1
+    assert claude_text.index("<sgm_instructions>") < claude_text.index("## SGM")
+    assert claude_text.index("Proposal records are durable immediately") < claude_text.index(
+        "</sgm_instructions>"
+    )
     assert "## SGM" in claude_text
     assert "sgm context <spec-file-or-id>" in claude_text
     assert "Use the narrower behavior spec that matches the work" in claude_text
@@ -141,6 +153,8 @@ def test_init_rewrites_existing_agents_guidance_without_duplication(
     assert ".sgm/work/" in gitignore_text
     assert "sgm-state/" in gitignore_text
     agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
+    assert agents_text.count("<sgm_instructions>") == 1
+    assert agents_text.count("</sgm_instructions>") == 1
     assert agents_text.count("Use `sgm` when working in governed areas.") == 1
     assert (
         "Main agent: orchestrate spec work and hand implementation to a sub-agent." in agents_text
@@ -173,6 +187,8 @@ def test_init_rewrites_stale_claude_section(tmp_path: Path, sgm_executable: Path
     assert result.returncode == 0
     assert "updated: CLAUDE.md" in result.stdout
     claude_text = (repo_root / "CLAUDE.md").read_text(encoding="utf-8")
+    assert claude_text.count("<sgm_instructions>") == 1
+    assert claude_text.count("</sgm_instructions>") == 1
     assert claude_text.count("## SGM") == 1
     assert "old instructions" not in claude_text
     assert "Use `sgm` before and after governed edits:" in claude_text
@@ -188,6 +204,38 @@ def test_init_rewrites_stale_claude_section(tmp_path: Path, sgm_executable: Path
         claude_text
     )
     assert "Prefer modules that align with a single spec concern when practical" in claude_text
+
+
+def test_init_rewrites_existing_tagged_sgm_guidance(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    repo_root = tmp_path / "tagged-guidance-repo"
+    repo_root.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo_root, check=True)
+    (repo_root / "AGENTS.md").write_text(
+        "# Agents\n\n<sgm_instructions>\nstale agents instructions\n</sgm_instructions>\n",
+        encoding="utf-8",
+    )
+    (repo_root / "CLAUDE.md").write_text(
+        "# Claude\n\n<sgm_instructions>\nstale claude instructions\n</sgm_instructions>\n",
+        encoding="utf-8",
+    )
+
+    result = run_cli(sgm_executable, repo_root, "init")
+
+    assert result.returncode == 0
+    assert "updated: AGENTS.md, CLAUDE.md" in result.stdout
+    agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
+    assert agents_text.count("<sgm_instructions>") == 1
+    assert agents_text.count("</sgm_instructions>") == 1
+    assert "stale agents instructions" not in agents_text
+    assert "Use `sgm` when working in governed areas." in agents_text
+    claude_text = (repo_root / "CLAUDE.md").read_text(encoding="utf-8")
+    assert claude_text.count("<sgm_instructions>") == 1
+    assert claude_text.count("</sgm_instructions>") == 1
+    assert "stale claude instructions" not in claude_text
+    assert "Use `sgm` before and after governed edits:" in claude_text
 
 
 def test_init_installs_claude_hooks(tmp_path: Path, sgm_executable: Path) -> None:

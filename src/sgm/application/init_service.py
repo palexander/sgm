@@ -95,7 +95,8 @@ class InitService:
     def _ensure_agents_guidance(self) -> str:
         block = self._agents_guidance_block()
         pattern = re.compile(
-            r"(?ms)^Use `sgm` when working in governed areas\.\n\n"
+            r"(?ms)^<sgm_instructions>\n.*?</sgm_instructions>\n?"
+            r"|^Use `sgm` when working in governed areas\.\n\n"
             r"(?:- Main agent: orchestrate spec work and hand implementation to a sub-agent\.\n)?"
             r"(?:- Use the narrower behavior spec that matches the work: command model, "
             r"context and delta, validation and focus, persistence, init, or spec format\.\n)?"
@@ -127,7 +128,10 @@ class InitService:
 
     def _ensure_claude_guidance(self) -> str:
         section = self._claude_guidance_section()
-        pattern = re.compile(r"(?ms)^## SGM\n.*?(?=^## |\Z)")
+        pattern = re.compile(
+            r"(?ms)^<sgm_instructions>\n.*?</sgm_instructions>\n?"
+            r"|^## SGM\n.*?(?=^## |\Z)"
+        )
         return self._ensure_patterned_block(
             path="CLAUDE.md",
             block=section,
@@ -260,6 +264,7 @@ class InitService:
     def _agents_guidance_block(self) -> str:
         return "\n".join(
             [
+                "<sgm_instructions>",
                 "Use `sgm` when working in governed areas.",
                 "",
                 "- Main agent: orchestrate spec work and hand implementation to a sub-agent.",
@@ -274,12 +279,14 @@ class InitService:
                 "- Before edits: `sgm context <spec-file-or-id>`",
                 "- After edits: `sgm validate`",
                 "- Dry run only: `sgm validate --no-record`",
+                "</sgm_instructions>",
             ]
         )
 
     def _claude_guidance_section(self) -> str:
         return "\n".join(
             [
+                "<sgm_instructions>",
                 "## SGM",
                 "",
                 "Use `sgm` before and after governed edits:",
@@ -303,6 +310,7 @@ class InitService:
                     "use `sgm propose` for incidental splash expansion"
                 ),
                 "- Proposal records are durable immediately in `.sgm/persisted/proposals/`",
+                "</sgm_instructions>",
             ]
         )
 

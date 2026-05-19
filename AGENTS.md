@@ -1,3 +1,4 @@
+<sgm_instructions>
 Use `sgm` when working in governed areas.
 
 - Main agent: orchestrate spec work and hand implementation to a sub-agent.
@@ -12,3 +13,4 @@ Use `sgm` when working in governed areas.
 - Before edits: `sgm context <spec-file-or-id>`
 - After edits: `sgm validate`
 - Dry run only: `sgm validate --no-record`
+</sgm_instructions>
