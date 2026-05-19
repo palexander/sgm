@@ -143,3 +143,34 @@ def test_inventory_nodes_skips_sgm_state_and_nested_noise(tmp_path: Path) -> Non
     assert ".sgm/persisted/proposals/prop.json" not in paths
     assert "vendor/nested-repo/inner.ts" not in paths
     assert "packages/app/node_modules/dep/index.js" not in paths
+
+
+def test_list_spec_files_discovers_specs_and_docs_specs(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    (repo_root / "specs").mkdir()
+    (repo_root / "docs" / "specs" / "nested").mkdir(parents=True)
+    (repo_root / "specs" / "top-level.sgm.yaml").write_text(
+        "id: spec-top\n",
+        encoding="utf-8",
+    )
+    (repo_root / "docs" / "specs" / "epic-compatible-ui-auth.sgm.yaml").write_text(
+        "id: spec-docs\n",
+        encoding="utf-8",
+    )
+    (repo_root / "docs" / "specs" / "nested" / "extra.sgm.yml").write_text(
+        "id: spec-nested\n",
+        encoding="utf-8",
+    )
+    (repo_root / "docs" / "specs" / "notes.yaml").write_text(
+        "id: not-a-spec\n",
+        encoding="utf-8",
+    )
+
+    adapter = FileSystemAdapter(repo_root=repo_root)
+
+    assert adapter.list_spec_files() == (
+        "specs/top-level.sgm.yaml",
+        "docs/specs/epic-compatible-ui-auth.sgm.yaml",
+        "docs/specs/nested/extra.sgm.yml",
+    )

@@ -133,17 +133,16 @@ class FileSystemAdapter:
         return not (candidate != self.repo_root and (candidate / ".git").exists())
 
     def list_spec_files(self) -> tuple[str, ...]:
-        specs_root: Path = self.repo_root / "specs"
-        if not specs_root.is_dir():
-            return ()
-
         spec_paths: list[str] = []
-        for path in sorted(specs_root.rglob("*")):
-            if not path.is_file():
+        for specs_root in (self.repo_root / "specs", self.repo_root / "docs" / "specs"):
+            if not specs_root.is_dir():
                 continue
-            if not (path.name.endswith(".sgm.yaml") or path.name.endswith(".sgm.yml")):
-                continue
-            spec_paths.append(to_repo_relative_posix(self.repo_root, str(path)))
+            for path in sorted(specs_root.rglob("*")):
+                if not path.is_file():
+                    continue
+                if not (path.name.endswith(".sgm.yaml") or path.name.endswith(".sgm.yml")):
+                    continue
+                spec_paths.append(to_repo_relative_posix(self.repo_root, str(path)))
         return tuple(spec_paths)
 
     def list_decision_files(self) -> tuple[str, ...]:
