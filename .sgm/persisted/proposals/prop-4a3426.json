@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-05-19T15:28:16",
+  "id": "prop-4a3426",
+  "path": ".github/workflows/ci.yml",
+  "reason": "CI workflow action versions are part of the repository command and release quality surface.",
+  "review_reason": null,
+  "reviewed_at": "2026-05-19T15:28:19",
+  "spec_id": "spec-sgm-cli-command-model-001",
+  "status": "approved"
+}
