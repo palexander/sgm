@@ -4,7 +4,7 @@
   "path": "pyproject.toml",
   "reason": "Add the runtime schema-validation dependency needed to enforce the formal spec schema artifact.",
   "review_reason": null,
-  "reviewed_at": null,
+  "reviewed_at": "2026-05-19T15:03:56",
   "spec_id": "spec-sgm-spec-document-format-001",
-  "status": "pending"
+  "status": "approved"
 }

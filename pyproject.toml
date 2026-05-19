@@ -29,6 +29,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/sgm"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"specs/sgm-spec-document-format.yaml" = "sgm/specs/sgm-spec-document-format.yaml"
+
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]

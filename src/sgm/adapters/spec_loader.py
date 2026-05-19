@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from importlib import resources
 from pathlib import Path
 from typing import Any, cast
 
@@ -49,7 +50,18 @@ def _validate_against_schema(raw_document: object) -> None:
 def _spec_validator() -> Any:
     schema_path = Path(__file__).resolve().parents[3] / "specs" / "sgm-spec-document-format.yaml"
     try:
-        schema = yaml.safe_load(schema_path.read_text(encoding="utf-8"))
+        schema_text = (
+            resources.files("sgm")
+            .joinpath("specs", "sgm-spec-document-format.yaml")
+            .read_text(encoding="utf-8")
+        )
+    except OSError:
+        try:
+            schema_text = schema_path.read_text(encoding="utf-8")
+        except OSError as error:
+            raise InfrastructureError(f"failed to read spec schema: {error}") from error
+    try:
+        schema = yaml.safe_load(schema_text)
     except OSError as error:
         raise InfrastructureError(f"failed to read spec schema: {error}") from error
     if not isinstance(schema, dict):

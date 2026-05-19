@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -187,3 +188,15 @@ def test_load_spec_document_rejects_missing_governs_selector(tmp_path: Path) -> 
 
     with pytest.raises(SpecValidationError, match="selector must be a non-empty string"):
         load_spec_document(spec_path, tmp_path)
+
+
+def test_wheel_includes_schema_for_installed_loader() -> None:
+    pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    pyproject = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+
+    force_include = pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["force-include"]
+
+    assert (
+        force_include["specs/sgm-spec-document-format.yaml"]
+        == "sgm/specs/sgm-spec-document-format.yaml"
+    )
