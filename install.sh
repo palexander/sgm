@@ -3,7 +3,7 @@ set -euo pipefail
 
 # sgm installer
 # Usage: curl -fsSL https://raw.githubusercontent.com/palexander/sgm/main/install.sh | bash
-# Or with a specific version:
+# Or update/pin to a specific version:
 # SGM_VERSION=v0.1.0 curl -fsSL ... | bash
 
 GITHUB_REPO="palexander/sgm"
@@ -87,7 +87,7 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 curl -fsSL -o "${TMP_DIR}/${WHEEL_NAME}" "$WHEEL_URL" \
   || error "Failed to download wheel from:\n  ${WHEEL_URL}\n\nCheck https://github.com/${GITHUB_REPO}/releases for available versions."
 
-uv tool install --python 3.12 "${TMP_DIR}/${WHEEL_NAME}"
+uv tool install --force --python 3.12 "${TMP_DIR}/${WHEEL_NAME}"
 
 # ── Verify install ────────────────────────────────────────────────────────────
 

@@ -63,5 +63,11 @@ jobs:
             ## Upgrade
 
             ```bash
+            curl -fsSL https://raw.githubusercontent.com/palexander/sgm/main/install.sh | bash
+            ```
+
+            Or, if you installed from another source:
+
+            ```bash
             uv tool upgrade sgm
             ```
