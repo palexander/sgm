@@ -34,6 +34,7 @@ HOOK_MISSING_MESSAGE = "SGM hook skipped: install the sgm binary to enable gover
 PRETOOL_COMMAND = "pretool"
 POSTTOOL_COMMAND = "posttool"
 STOP_COMMAND = "stop"
+USER_PROMPT_COMMAND = "user-prompt"
 
 
 @dataclass(slots=True)
@@ -151,6 +152,7 @@ class InitService:
 
     def _ensure_claude_hooks(self) -> str:
         hooks_config = {
+            "UserPromptSubmit": [self._hook_entry("", self._hook_command(USER_PROMPT_COMMAND))],
             "PreToolUse": [
                 self._hook_entry("Bash", self._hook_command(PRETOOL_COMMAND)),
                 self._hook_entry("Edit", self._hook_command(PRETOOL_COMMAND)),
@@ -164,6 +166,7 @@ class InitService:
 
     def _ensure_codex_hooks(self) -> str:
         hooks_config = {
+            "UserPromptSubmit": [self._hook_entry("", self._hook_command(USER_PROMPT_COMMAND))],
             "PreToolUse": [self._hook_entry("Bash", self._hook_command(PRETOOL_COMMAND))],
             "PostToolUse": [self._hook_entry("Bash", self._hook_command(POSTTOOL_COMMAND))],
             "Stop": [self._hook_entry("", self._hook_command(STOP_COMMAND))],

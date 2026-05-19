@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'if command -v sgm >/dev/null 2>&1; then exec sgm hook user-prompt; fi; printf \"%s\\n\" \"SGM hook skipped: install the sgm binary to enable governance hooks.\" >&2; exit 0'"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",

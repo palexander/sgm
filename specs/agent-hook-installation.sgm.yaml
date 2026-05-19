@@ -18,7 +18,8 @@ text: |
   11. Codex hook installation should create or merge repo-local `.codex/hooks.json` entries that invoke the packaged SGM hook entrypoints.
   12. Generated hook commands should target installed `sgm hook` binary subcommands rather than source-tree-only integration paths.
   13. If a checked-in hook config runs before `sgm` is installed, the hook command should print a clear warning and exit successfully instead of breaking the agent.
-  14. This spec naturally splashes into hook runtime parsing, agent hook templates, init installer behavior, init output rendering, and the integration tests that exercise hook installation and enforcement.
+  14. When a supported agent host exposes a user-prompt-start hook, SGM should add non-blocking context that reminds the agent to make sure the user's request is represented by an existing or newly created spec before implementation begins.
+  15. This spec naturally splashes into hook runtime parsing, agent hook templates, init installer behavior, init output rendering, and the integration tests that exercise hook installation and enforcement.
 
 governs:
   - selector: "specs/agent-hook-installation.sgm.yaml"

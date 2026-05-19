@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-05-19T15:15:08",
+  "id": "prop-f99229",
+  "path": "integrations/claude-hooks/bin/user_prompt.py",
+  "reason": "Add the legacy Claude wrapper for the packaged user-prompt hook entrypoint.",
+  "review_reason": null,
+  "reviewed_at": "2026-05-19T15:15:16",
+  "spec_id": "spec-sgm-agent-hook-installation-001",
+  "status": "approved"
+}

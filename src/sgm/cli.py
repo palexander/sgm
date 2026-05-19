@@ -286,6 +286,13 @@ def hook_pretool() -> None:
     raise typer.Exit(run_hook())
 
 
+@hook_app.command("user-prompt", help="Run the SGM user prompt hook.")
+def hook_user_prompt() -> None:
+    from sgm.hooks.user_prompt import main as run_hook
+
+    raise typer.Exit(run_hook())
+
+
 @hook_app.command("posttool", help="Run the SGM PostToolUse hook.")
 def hook_posttool() -> None:
     from sgm.hooks.posttool import main as run_hook

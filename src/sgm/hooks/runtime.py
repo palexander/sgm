@@ -164,6 +164,14 @@ def get_tool_response(payload: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def user_prompt_text(payload: dict[str, Any]) -> str:
+    for key in ("prompt", "user_prompt", "userPrompt", "message", "text"):
+        value = payload.get(key)
+        if isinstance(value, str):
+            return value
+    return ""
+
+
 def extract_text(value: Any) -> str:
     if isinstance(value, str):
         return value
@@ -343,6 +351,35 @@ def block_stop(reason: str) -> int:
     return 0
 
 
+def add_user_prompt_context(payload: dict[str, Any], message: str) -> None:
+    json.dump(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": event_name(payload, "UserPromptSubmit"),
+                "additionalContext": message,
+            }
+        },
+        sys.stdout,
+    )
+    sys.stdout.write("\n")
+
+
+def user_prompt_guidance(prompt: str) -> str:
+    lines = [
+        "SGM pre-work check:",
+        "Before implementing, make sure the user's request is represented in an SGM spec.",
+        "If an existing spec covers the behavior, run `sgm context <spec-file-or-id>` before edits.",
+        "If no existing spec covers it, create or update the governing spec before code changes.",
+        (
+            "For ownership gaps discovered during implementation, use `sgm propose` for "
+            "unowned files or ask a human before `sgm shared allow` for another spec's files."
+        ),
+    ]
+    if prompt:
+        lines.extend(["", f"User request: {prompt}"])
+    return "\n".join(lines)
+
+
 def semantic_review_prompt(state: HookState) -> str:
     spec = state.active_spec_path or state.active_spec_id or "<active-spec>"
     return "\n".join(
@@ -367,6 +404,12 @@ def semantic_review_prompt(state: HookState) -> str:
             "the review and validate.",
         ]
     )
+
+
+def run_user_prompt() -> int:
+    payload = read_input()
+    add_user_prompt_context(payload, user_prompt_guidance(user_prompt_text(payload)))
+    return 0
 
 
 def run_pretool() -> int:

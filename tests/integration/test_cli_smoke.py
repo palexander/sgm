@@ -345,6 +345,37 @@ def test_cli_hook_pretool_dispatches_packaged_runtime(
     assert json.loads(result.stdout)["hookSpecificOutput"]["permissionDecision"] == "allow"
 
 
+def test_cli_hook_user_prompt_adds_spec_check_context(
+    tmp_path: Path,
+    sgm_executable: Path,
+) -> None:
+    sample_repo = create_sample_repo(tmp_path)
+
+    result = subprocess.run(
+        [str(sgm_executable), "hook", "user-prompt"],
+        cwd=sample_repo.root,
+        input=json.dumps(
+            {
+                "cwd": str(sample_repo.root),
+                "hook_event_name": "UserPromptSubmit",
+                "prompt": "Add a discharge summary exporter",
+            }
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    output = json.loads(result.stdout)["hookSpecificOutput"]
+    assert output["hookEventName"] == "UserPromptSubmit"
+    assert "Before implementing, make sure the user's request is represented" in (
+        output["additionalContext"]
+    )
+    assert "sgm context <spec-file-or-id>" in output["additionalContext"]
+    assert "Add a discharge summary exporter" in output["additionalContext"]
+
+
 def test_cli_hook_semantic_reviewed_records_checkpoint(
     tmp_path: Path,
     sgm_executable: Path,

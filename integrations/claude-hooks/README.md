@@ -5,6 +5,8 @@ follow the SGM workflow.
 
 What it does:
 
+- Adds a pre-work reminder when the user submits a prompt, if the host supports
+  that hook event
 - Requires `sgm context <spec>` before edits
 - Blocks edits outside the active spec unless an explicit force override is set
 - Prompts for a semantic spec-to-implementation alignment review before a task can stop
@@ -17,7 +19,7 @@ How to use it:
    project’s Claude settings location.
 2. Ensure the installed `sgm` binary is available on `PATH`.
 3. Keep the generated wrapper commands pointed at `sgm hook pretool`,
-   `sgm hook posttool`, and `sgm hook stop`.
+   `sgm hook user-prompt`, `sgm hook posttool`, and `sgm hook stop`.
 
 Notes:
 

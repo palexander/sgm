@@ -248,6 +248,9 @@ def test_init_installs_claude_hooks(tmp_path: Path, sgm_executable: Path) -> Non
     assert result.returncode == 0
     assert "hooks: claude" in result.stdout
     settings = json.loads((repo_root / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    assert _hook_commands(settings, "UserPromptSubmit", "") == [
+        _expected_hook_command("user-prompt")
+    ]
     assert _hook_commands(settings, "PreToolUse", "Bash") == [_expected_hook_command("pretool")]
     assert _hook_commands(settings, "PreToolUse", "Edit") == [_expected_hook_command("pretool")]
     assert _hook_commands(settings, "PreToolUse", "Write") == [_expected_hook_command("pretool")]
@@ -293,6 +296,9 @@ def test_init_installs_codex_hooks_and_preserves_existing_hooks(
     assert second_result.returncode == 0
     assert "hooks: codex" in result.stdout
     config = json.loads((repo_root / ".codex" / "hooks.json").read_text(encoding="utf-8"))
+    assert _hook_commands(config, "UserPromptSubmit", "") == [
+        _expected_hook_command("user-prompt")
+    ]
     assert _hook_commands(config, "PreToolUse", "Bash") == [
         "echo existing",
         _expected_hook_command("pretool"),
@@ -300,6 +306,7 @@ def test_init_installs_codex_hooks_and_preserves_existing_hooks(
     assert _hook_commands(config, "PostToolUse", "Bash") == [_expected_hook_command("posttool")]
     assert _hook_commands(config, "Stop", "") == [_expected_hook_command("stop")]
     assert _all_hook_commands(config).count(_expected_hook_command("pretool")) == 1
+    assert _all_hook_commands(config).count(_expected_hook_command("user-prompt")) == 1
     assert _all_hook_commands(config).count(_expected_hook_command("posttool")) == 1
     assert _all_hook_commands(config).count(_expected_hook_command("stop")) == 1
 
