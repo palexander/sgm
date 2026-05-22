@@ -38,7 +38,7 @@ def test_load_spec_document_parses_valid_yaml(tmp_path: Path) -> None:
     assert not hasattr(document, "version")
 
 
-def test_load_spec_document_ignores_legacy_version_field(tmp_path: Path) -> None:
+def test_load_spec_document_ignores_version_field(tmp_path: Path) -> None:
     spec_path = tmp_path / "specs" / "spec.sgm.yaml"
     spec_path.parent.mkdir(parents=True)
     spec_path.write_text(

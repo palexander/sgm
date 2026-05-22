@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-05-22T19:10:54+00:00",
+  "delegate_spec_id": "spec-sgm-init-001",
+  "id": "delegation-ae902da922c43bec",
+  "owner_spec_id": "spec-sgm-spec-document-format-001",
+  "path": "specs/cli-workflow.sgm.yaml",
+  "reason": "Allow terminology cleanup in the workflow overview alongside init guidance wording.",
+  "revoked_at": null,
+  "status": "active"
+}

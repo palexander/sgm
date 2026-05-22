@@ -15,7 +15,7 @@ text: |
   7. Generated guidance should not tell users to add a separate persistence step as part of the normal workflow when proposal state is already durable.
   8. Generated guidance should tell agents not to edit spec files directly during implementation; incidental splash expansion should go through `sgm propose`.
   9. It should also keep common local artifact noise such as Python cache directories out of Git.
-  10. Generated guidance should steer users toward the narrower behavior specs instead of the retired umbrella workflow spec.
+  10. Generated guidance should steer users toward the narrower behavior specs.
   11. Generated guidance should explain the shared-governance loop compactly: run `sgm context`, use `sgm propose` for unowned files, ask a human plus `sgm shared allow` for owner-owned files, let the owner win on delegated files, treat coordination files as follow-through, then run `sgm validate`.
   12. This spec naturally splashes into the init command, filesystem scaffolding, the repo guidance docs it updates, and the init-focused tests that exercise that behavior.
 

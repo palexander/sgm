@@ -2,118 +2,93 @@
 
 Spec-governed graph memory for coding agents.
 
-## Development
+`sgm` helps a repo describe which behavior specs govern which files, then gives agents a focused workflow before and after edits. It keeps specs, decisions, proposals, delegation records, and coordination records reviewable while leaving transient runtime state local.
+
+## Install and Update
+
+Install the latest release:
 
 ```bash
-uv sync --python 3.12 --extra dev
-uv run pytest
-uv run ty check
-uv run ruff check
+curl -fsSL https://raw.githubusercontent.com/palexander/sgm/main/install.sh | bash
 ```
 
-## Local State
+Install or pin a specific version:
 
 ```bash
-rm -rf .sgm/
+SGM_VERSION=v0.1.1 curl -fsSL https://raw.githubusercontent.com/palexander/sgm/main/install.sh | bash
 ```
 
-## CLI
+The installer uses `uv tool install --force`, so rerunning either command updates an existing install. If `sgm` is installed but not found on your shell path, add the `uv` tool bin directory printed by the installer to `PATH`.
+
+## Getting Started
+
+From the repo you want to govern:
 
 ```bash
-uv run sgm --help
-uv run sgm init
-uv run sgm spec add
-uv run sgm context specs/context-and-delta.sgm.yaml
-uv run sgm validate
-uv run sgm validate --no-record
-uv run sgm shared list specs/context-and-delta.sgm.yaml
-uv run sgm proposals review
+sgm init
+sgm spec add
 ```
 
-`sgm` automatically refreshes file and spec state from disk on normal commands.
-`sgm sync` remains available as an explicit debug/rebuild path.
-Derived state is cached locally under `.sgm/work/state.json`.
+`sgm init` creates the standard repo scaffolding, updates local ignore rules for SGM working state, and adds repo guidance for agents. `sgm spec add` creates a new behavior spec and opens it in your configured editor.
 
-`sgm init` bootstraps `specs/`, `decisions/`, `.sgm/work/`, and `.sgm/persisted/`,
-ensures `.gitignore` excludes working state and persisted validation records, adds SGM guidance to `AGENTS.md`,
-and updates `CLAUDE.md` when it already exists.
+Write the behavior you want to govern in that spec, including the `governs` selectors for the files it owns. Commit the spec and generated guidance with the code or workflow it describes.
 
-Repo spec files should use the naming convention `specs/{spec_name}.sgm.yaml`.
-`uv run sgm spec add` prompts for a spec name, creates a starter spec file, and opens it in your configured editor.
+## Agent Workflow
 
-The old umbrella workflow spec has been retired as an enforcing spec. The
-behavior is now split across narrower specs:
-- `specs/cli-command-model.sgm.yaml`
-- `specs/context-and-delta.sgm.yaml`
-- `specs/validation-and-focus.sgm.yaml`
-- `specs/persistence-artifacts.sgm.yaml`
-- `specs/init-bootstrap.sgm.yaml`
-- `specs/spec-document-format.sgm.yaml`
+Before an agent changes governed files, it should run:
 
-`sgm context <spec-file-or-id>` returns a self-contained brief with:
-- `[TARGET]` for the active spec
-- `[READ]` for any owner specs that must be consulted first
-- `[EDITABLE]` for owned and delegated files
-- `[COORDINATION]` for spillover files that are only allowed alongside substantive in-scope work
-- `[NEXT]` for the exact next command when the file is unowned or owned by another spec
+```bash
+sgm context <spec-file-or-id>
+```
 
-`sgm validate` validates all active specs against the current repo change set.
-`sgm validate --no-record` is the dry run form.
+The context brief shows the active spec, any owner specs that must be read first, editable files, coordination files, relevant decisions, and next steps for unowned or owner-owned paths.
 
-`sgm shared allow` records standing owner-delegate access for a whole file without
-changing ownership. `sgm shared mark-coordination` records a low-friction
-follow-through surface such as a command table, README, or shared smoke test.
+After edits, the agent should run:
 
-`sgm context` and `sgm validate` surface a `[SPEC-DELTA]` unified diff on the
-first run after a governing spec file changes on disk.
+```bash
+sgm validate
+```
 
-`sgm context` also surfaces active `[DECISIONS]` for files touched by
-architectural or migration decisions, even when those files are not governed by
-a behavioral spec.
+Use `sgm validate --no-record` when you only want a dry run.
 
-`sgm proposals review` walks pending proposals one at a time in deterministic
-order. Use `a` to approve, `r` to reject, `s` to skip, and `g` to expand the
-current prompt with the governed files for the target spec. In a real terminal,
-the review screen redraws from the top between items so each proposal gets an
-uncluttered view. The prompt sizes the spec excerpt to the visible terminal
-height and keeps extra blank space before the key hints so the controls do not
-blend into the spec text. Piped and test runs fall back to line-based input and
-keep a plain transcript.
+## Common Commands
 
-When implementing a governed spec, the intended pattern is:
-- the main agent orchestrates
-- a sub-agent performs the implementation work
-- modules should align to a single spec concern when practical so per-spec work and commits stay coherent
-- agents should not edit spec files directly during implementation
-- use `uv run sgm propose` only for unowned files that should become owned by the active spec
-- if another spec already owns the file, ask a human and record `uv run sgm shared allow`
-- on delegated shared files, the owner spec wins
-- coordination files are only for follow-through alongside substantive editable work
+```bash
+sgm --help
+sgm init
+sgm spec add
+sgm context <spec-file-or-id>
+sgm validate
+sgm validate --no-record
+sgm shared list <spec-or-path>
+sgm proposals list
+sgm proposals review
+```
 
-## Human Workflow
+`sgm` refreshes file and spec state from disk during normal commands. `sgm sync` remains available for explicit debug or rebuild work, but it is not part of the normal loop.
 
-- Write or update the spec under `specs/` that matches the behavior you are changing.
-- Use the narrower behavior specs rather than the retired umbrella workflow spec.
-- Define the spec's initial `governs` selectors.
-- During implementation, do not edit spec files directly; use `sgm propose` only when an unowned file should become owned by the active spec.
-- If another active spec owns the file, keep ownership where it is and record a standing grant with `uv run sgm shared allow <owner-spec-id> <spec-id> <path> "<reason>"`.
-- Use `uv run sgm shared mark-coordination <owner-spec-id> <path> "<reason>"` for low-friction spillover files such as registries, command tables, docs, and shared smoke tests.
-- Run `uv run sgm validate` to see whether the current repo state is valid across active specs, or `uv run sgm validate <spec>` for one spec.
-- Use `uv run sgm shared list <spec-or-path>` to inspect current owner, delegation, and coordination records.
-- Review pending governance expansions with `uv run sgm proposals list`.
-- Approve or reject proposals as part of review with `uv run sgm proposals approve <proposal-id>` or `uv run sgm proposals reject <proposal-id>`.
-- Use `uv run sgm proposals review` when you want to step through pending proposals interactively.
+## Governance Model
 
-## Persistence Model
+Use the narrow behavior spec that matches the change. Current behavior specs cover the CLI command model, context and delta output, validation and focus, persistence, init bootstrap, and spec document format.
 
-SGM separates durable repo artifacts from operational runtime state.
+If a file is unowned, propose adding it to the active spec:
 
-- Check into Git: `specs/`, `decisions/`, and other reviewable governance files.
-- Keep out of Git: `.sgm/work/` caches, refresh indexes, locks, and validation
-  records.
-- Proposal records are durable immediately in `.sgm/persisted/proposals/` when
-  you create, approve, or reject them.
-- Delegation records are durable immediately in `.sgm/persisted/delegations/`.
-- Coordination records are durable immediately in `.sgm/persisted/coordination/`.
-- Keep proposals as the collaborative review record; keep routine validation
-  runs in working state rather than promoting every run into Git.
+```bash
+sgm propose <spec-id> <path> "<reason>"
+```
+
+If another active spec owns the file, ask a human first, then record standing shared access:
+
+```bash
+sgm shared allow <owner-spec-id> <spec-id> <path> "<reason>"
+```
+
+Coordination files are low-friction follow-through surfaces, such as command tables, README updates, registries, or shared smoke tests. They should accompany substantive in-scope work rather than become a way to bypass ownership.
+
+## Stored State
+
+Check durable governance artifacts into Git: `specs/`, `decisions/`, and reviewable records under `.sgm/persisted/`.
+
+Keep operational state out of Git: `.sgm/work/` caches, indexes, locks, and validation records.
+
+Proposal, delegation, and coordination records become durable when the relevant `sgm` command writes them. There is no separate persistence step in the normal workflow.

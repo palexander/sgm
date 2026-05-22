@@ -9,7 +9,7 @@ text: |
   2. The schema artifact should describe the required top-level shape for spec documents, including core metadata fields such as `id`, `title`, `status`, `author`, and `text`.
   3. `governs` should remain a list of selector mappings in that schema.
   4. The schema should define the expected shape of each `governs` entry, including the `selector` field and the optional `priority` field.
-  5. Repo spec files should conform to that schema; legacy top-level `version` fields are ignored for now, and draft state is represented in git history rather than by in-file metadata.
+  5. Repo spec files should conform to that schema; revision state is represented in git history rather than by in-file metadata.
   6. This spec naturally splashes into the YAML loader, the shared spec models/renderers, and the loader-focused tests.
 
 governs:

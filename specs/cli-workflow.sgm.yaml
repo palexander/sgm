@@ -1,12 +1,12 @@
 id: spec-sgm-cli-workflow-001
-title: "SGM Workflow Overview (Retired)"
+title: "SGM Workflow Overview"
 version: 1
 status: deprecated
 author: paul
 
 text: |
-  This file is a retired overview of the old umbrella workflow spec.
-  The enforcing behavior now lives in narrower specs:
+  This file summarizes the current behavior spec layout.
+  The enforcing behavior lives in narrower specs:
   1. `specs/cli-command-model.sgm.yaml`
   2. `specs/context-and-delta.sgm.yaml`
   3. `specs/validation-and-focus.sgm.yaml`

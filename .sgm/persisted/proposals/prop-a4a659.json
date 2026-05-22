@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-05-22T12:09:47",
+  "id": "prop-a4a659",
+  "path": "specs/cli-workflow.sgm.yaml",
+  "reason": "Remove obsolete legacy or retired wording from the spec overview.",
+  "review_reason": "Keep specs/cli-workflow.sgm.yaml under the spec document format cleanup only to avoid owner overlap.",
+  "reviewed_at": "2026-05-22T12:10:04",
+  "spec_id": "spec-sgm-init-001",
+  "status": "rejected"
+}
